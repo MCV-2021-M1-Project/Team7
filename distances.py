@@ -56,8 +56,8 @@ distance_metrics = {
 
 
 def find_distance(u, v, method="cosine"):
+    
     """
-
     Calculate distance between the vectors with the chosen method
     
     Returns: Distance between arrays
