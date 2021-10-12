@@ -8,9 +8,11 @@ import ml_metrics as metrics
 import pickle
 import glob
 
+
 # You should change the path according to your computer
 # We can take the path as a command line argument
 cur_path = "D://Belgeler//CV-Projects//M1//Week1"
+
 
 # Available color_spaces
 color_spaces = {
@@ -27,8 +29,18 @@ query_set1_imgs = get_images_and_labels.get_query_set_images(cur_path, "qsd1")
 query_set2_imgs = get_images_and_labels.get_query_set_images(cur_path, "qsd2")
 
 
-# Search for an image in the museum dataset with the given distance metric
+# Calculate the distance of the given image's histogram with the histograms of museum dataset 
+# with the given distance metric
 def image_search(hist1, hist2_arr, distance_metric="cosine", k=5):
+    
+    """
+    Args: 
+    
+    hist1 = Histogram of the image we want to find
+    hist2_arr = List of all the histograms of the museum dataset    
+    
+    Returns top k predictions which have the least distance with hist1
+    """
 
     res = [find_distance(hist1, mus_hist, distance_metric) for mus_hist in hist2_arr]
     pred = np.argsort(np.array(res))[:k]
@@ -38,6 +50,17 @@ def image_search(hist1, hist2_arr, distance_metric="cosine", k=5):
 
 # Fetches the histograms for the given dataset
 def get_histograms(dataset_name, color_space, mask, hist_size, hist_range):
+    
+    """
+    Calculates the histogram for all the images in the dataset in the given color space
+    
+    Args:
+    
+    dataset_name: 'BBDD', 'qsd1' or 'qsd2'
+    color_space: 'RGB', 'HSV', 'LAB', 'YCRCB'
+    
+    Returns a list of histograms
+    """
 
     file_path = dataset_name + "_hist_" + color_space + ".pkl"
 
@@ -84,6 +107,16 @@ def get_histograms(dataset_name, color_space, mask, hist_size, hist_range):
 # Find an image in the museum dataset
 def find_single_image(img, hist_size=[16,16,16], hist_range=[0,256,0,256,0,256], \
                       mask=None, color_space="RGB", distance_metric="cosine", k=5):
+    
+    """
+    Find the image in the museum dataset
+    
+    Args:
+    
+    img: Should be a numpy array
+    
+    Returns a list of best k predictions
+    """
 
     img_hist = calc_3d_hist(img, mask, hist_size, hist_range)
 
@@ -93,6 +126,17 @@ def find_single_image(img, hist_size=[16,16,16], hist_range=[0,256,0,256,0,256],
 # Evaluate the whole query set with the given conditions
 def evaluate_query_set(query_set="qsd1", color_space="RGB", distance_metric="cosine", k=5, \
                        hist_size=[16,16,16], hist_range=[0,256,0,256,0,256], mask=None):
+    
+    """
+    Calculates the histogram for all the images in the dataset in the given color space
+    
+    Args:
+    
+    query_set: 'qsd1' or 'qsd2'
+    color_space: 'RGB', 'HSV', 'LAB', 'YCRCB'
+    
+    Returns the predictions of all the images in a list of lists and the mean average precision for the query
+    """
 
     
     museum_imgs_hists = get_histograms("BBDD", color_space, mask, hist_size, hist_range)   
@@ -104,11 +148,15 @@ def evaluate_query_set(query_set="qsd1", color_space="RGB", distance_metric="cos
     for query_hist in query_imgs_hists:
         query_set_preds.append(image_search(query_hist, museum_imgs_hists, distance_metric, k))
 
-
+    map = round(metrics.mapk(qs_labels, query_set_preds, k), 4)
     print("For Color Space:", color_space, "and Distance Metric:", distance_metric, \
-          "and k:", k, "AP is: ", round(metrics.mapk(qs_labels, query_set_preds, k), 4))
+          "and k:", k, "AP is: ", map)
 
-
+    return query_set_preds, map
+    
+    
+# Evaluate both query sets for all the possible color space 
+# and distance metric combinations and for k=1 and k=5 
 def evaluate_all():
     for query_set in ["qsd1","qsd2"]:
         print(query_set)
@@ -116,7 +164,8 @@ def evaluate_all():
             for distance_metric in distance_metrics.keys():
                 for k in [1,5]:
                     evaluate_query_set(query_set, clr_spc, distance_metric, k, hist_size=[24,24,24])
-
+                    
+    # Removes all the pickle files
     [os.remove(file) for file in glob.glob(os.path.join(cur_path, '*.pkl'))]
 
 evaluate_all()
