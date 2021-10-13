@@ -4,7 +4,7 @@ import os
 from distances import find_distance, distance_metrics
 from histogram import calc_3d_hist, calc_1d_hist
 import get_images_and_labels
-import ml_metrics as metrics
+import evaluation as eval
 import pickle
 import glob
 
@@ -151,7 +151,7 @@ def evaluate_query_set(query_set="qsd1", color_space="RGB", distance_metric="cos
         query_set_preds.append(image_search(query_hist, museum_imgs_hists, distance_metric, k))
 
     # Calculate mean average precision for the whole query set
-    map = round(metrics.mapk(qs_labels, query_set_preds, k), 4)
+    map = round(eval.mapk(qs_labels, query_set_preds, k), 4)
     print("For Color Space:", color_space, "and Distance Metric:", distance_metric, \
           "and k:", k, "AP is: ", map)
 
