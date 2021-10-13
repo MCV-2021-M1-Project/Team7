@@ -1,0 +1,53 @@
+name: m1
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - blas=1.0=mkl
+  - ca-certificates=2021.9.30=haa95532_1
+  - freeglut=3.2.1=h0e60522_2
+  - freetype=2.10.4=h546665d_1
+  - icc_rt=2019.0.0=h0cc432a_1
+  - icu=68.1=h0e60522_0
+  - intel-openmp=2021.3.0=h57928b3_3372
+  - jasper=2.0.14=h77af90b_2
+  - jbig=2.1=h8d14728_2003
+  - jpeg=9d=h8ffe710_0
+  - lerc=2.2.1=h0e60522_0
+  - libblas=3.9.0=11_win64_mkl
+  - libcblas=3.9.0=11_win64_mkl
+  - libclang=11.1.0=default_h5c34c98_1
+  - libdeflate=1.7=h8ffe710_5
+  - liblapack=3.9.0=11_win64_mkl
+  - liblapacke=3.9.0=11_win64_mkl
+  - libopencv=4.5.3=py39h4b6fd43_5
+  - libpng=1.6.37=h1d00b33_2
+  - libprotobuf=3.18.1=h7755175_0
+  - libtiff=4.3.0=h0c97f57_1
+  - libwebp-base=1.2.1=h8ffe710_0
+  - libzlib=1.2.11=h8ffe710_1013
+  - lz4-c=1.9.3=h8ffe710_1
+  - mkl=2021.3.0=hb70f87d_564
+  - mkl-service=2.4.0=py39h2bbff1b_0
+  - numpy=1.21.2=py39h6635163_0
+  - opencv=4.5.3=py39hcbf5309_5
+  - openssl=1.1.1l=h2bbff1b_0
+  - pip=21.3=pyhd8ed1ab_0
+  - py-opencv=4.5.3=py39h832f523_5
+  - python=3.9.7=h7840368_3_cpython
+  - python_abi=3.9=2_cp39
+  - qt=5.12.9=h5909a2a_4
+  - scipy=1.7.1=py39hbe87c03_2
+  - setuptools=58.2.0=py39hcbf5309_0
+  - six=1.16.0=pyhd3eb1b0_0
+  - sqlite=3.36.0=h8ffe710_2
+  - tbb=2021.3.0=h2d74725_0
+  - tzdata=2021c=he74cb21_0
+  - ucrt=10.0.20348.0=h57928b3_0
+  - vc=14.2=hb210afc_5
+  - vs2015_runtime=14.29.30037=h902a5da_5
+  - wheel=0.37.0=pyhd8ed1ab_1
+  - xz=5.2.5=h62dcd97_1
+  - zlib=1.2.11=h8ffe710_1013
+  - zstd=1.5.0=h6255e5f_0
+prefix: D:\Uygulamalar\Anaconda\envs\m1
