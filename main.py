@@ -29,25 +29,6 @@ query_set1_imgs = get_images_and_labels.get_query_set_images(cur_path, "qsd1")
 query_set2_imgs = get_images_and_labels.get_query_set_images(cur_path, "qsd2")
 
 
-# Calculate the distance of the given image's histogram with the histograms of museum dataset 
-# with the given distance metric
-def image_search(hist1, hist2_arr, distance_metric="cosine", k=5):
-    
-    """
-    Args: 
-    
-    hist1 = Histogram of the image we want to find
-    hist2_arr = List of all the histograms of the museum dataset    
-    
-    Returns top k predictions which have the least distance with hist1
-    """
-
-    res = [find_distance(hist1, mus_hist, distance_metric) for mus_hist in hist2_arr]
-    pred = np.argsort(np.array(res))[:k]
-
-    return list(pred)
-
-
 # Fetches the histograms for the given dataset
 def get_histograms(dataset_name, color_space, mask, hist_size, hist_range):
     
@@ -104,6 +85,25 @@ def get_histograms(dataset_name, color_space, mask, hist_size, hist_range):
     return imgs_hists
 
 
+# Calculate the distance of the given image's histogram with the histograms of museum dataset 
+# with the given distance metric
+def image_search(hist1, hist2_arr, distance_metric="cosine", k=5):
+    
+    """
+    Args: 
+    
+    hist1 = Histogram of the image we want to find
+    hist2_arr = List of all the histograms of the museum dataset    
+    
+    Returns top k predictions which have the least distance with hist1
+    """
+
+    res = [find_distance(hist1, mus_hist, distance_metric) for mus_hist in hist2_arr]
+    pred = np.argsort(np.array(res))[:k]
+
+    return list(pred)
+
+
 # Find an image in the museum dataset
 def find_single_image(img, hist_size=[16,16,16], hist_range=[0,256,0,256,0,256], \
                       mask=None, color_space="RGB", distance_metric="cosine", k=5):
@@ -128,7 +128,7 @@ def evaluate_query_set(query_set="qsd1", color_space="RGB", distance_metric="cos
                        hist_size=[16,16,16], hist_range=[0,256,0,256,0,256], mask=None):
     
     """
-    Calculates the histogram for all the images in the dataset in the given color space
+    Evaluates the whole query set for the given parameters
     
     Args:
     
@@ -138,16 +138,19 @@ def evaluate_query_set(query_set="qsd1", color_space="RGB", distance_metric="cos
     Returns the predictions of all the images in a list of lists and the mean average precision for the query
     """
 
-    
+    # Get the histograms
     museum_imgs_hists = get_histograms("BBDD", color_space, mask, hist_size, hist_range)   
     query_imgs_hists = get_histograms(query_set, color_space, mask, hist_size, hist_range)
 
+    # Get ground truth labels
     qs_labels = get_images_and_labels.get_query_set_labels(cur_path, query_set)
 
+    # For each image find the top k predictions
     query_set_preds = []
     for query_hist in query_imgs_hists:
         query_set_preds.append(image_search(query_hist, museum_imgs_hists, distance_metric, k))
 
+    # Calculate mean average precision for the whole query set
     map = round(metrics.mapk(qs_labels, query_set_preds, k), 4)
     print("For Color Space:", color_space, "and Distance Metric:", distance_metric, \
           "and k:", k, "AP is: ", map)
