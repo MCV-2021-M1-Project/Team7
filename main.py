@@ -12,7 +12,7 @@ import glob
 # You should change the path according to your computer
 # We can take the path as a command line argument
 cur_path = "D://Belgeler//CV-Projects//M1//Week1"
-
+cur_path = os.getcwd()
 
 # Available color_spaces
 color_spaces = {
@@ -171,4 +171,5 @@ def evaluate_all():
     # Removes all the pickle files
     [os.remove(file) for file in glob.glob(os.path.join(cur_path, '*.pkl'))]
 
-evaluate_all()
+if __name__ =="__main__" :
+    evaluate_all()
