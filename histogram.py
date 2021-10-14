@@ -32,3 +32,6 @@ def calc_3d_hist(image, mask=None, hist_size=[16,16,16], hist_range=[0,256,0,256
     hist = cv2.normalize(hist, hist)
 
     return hist.flatten()
+
+if __name__ == "__main__":
+    print("-> histogram.py main function")
