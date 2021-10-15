@@ -20,13 +20,15 @@ def background_removal(image, limit=10):
     
     h, w = image.shape
     mask = np.zeros_like(image) + 1
-
+    
     for i in range(h):
+        #starting from the left side
         for j in range(w-1):
                 if abs(int(image[i,j]) - int(image[i,j+1])) <= limit:
                         mask[i,j] = 0
                 else:
                         break
+        #starting from the right side
         for j in range(w-1,0,-1):
                 if abs(int(image[i,j]) - int(image[i,j-1])) <= limit:
                         mask[i,j] = 0
@@ -94,7 +96,9 @@ def enhance_mask(mask, bw_min_ratio=0.6):
         #Top, right, bottom, left corners average binary value.
         borders = [np.mean(enhanced_mask[x,y:(y+w)]), np.mean(enhanced_mask[x:(x+h),y+w]) , \
                                     np.mean(enhanced_mask[x+h,y:(y+w)]), np.mean(enhanced_mask[x:(x+h),y+w]) ]
+        #Check if at least one border is mostly black pixels
         if np.min(borders) < bw_min_ratio:
+            #cut the "most black" border
             to_cut = np.argsort(borders)[0]
             if to_cut == 0:
                 x += 1
