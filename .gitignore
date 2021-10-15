@@ -1,4 +1,5 @@
-BDD/
+__pycache__/
+BBDD/
 qsd1_w1/
-qsd2_w2/
+qsd2_w1/
 saved_images/
