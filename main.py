@@ -5,13 +5,14 @@ from distances import find_distance, distance_metrics
 from histogram import calc_3d_hist, calc_1d_hist
 import get_images_and_labels
 import evaluation as eval
+import background_removal
 import pickle
 import glob
 
 
 # You should change the path according to your computer
 # We can take the path as a command line argument
-cur_path = "D://Belgeler//CV-Projects//M1//Week1"
+#cur_path = "D://Belgeler//CV-Projects//M1//Week1"
 cur_path = os.getcwd()
 
 # Available color_spaces
@@ -28,6 +29,8 @@ museum_imgs = get_images_and_labels.get_museum_dataset(cur_path)
 query_set1_imgs = get_images_and_labels.get_query_set_images(cur_path, "qsd1")
 query_set2_imgs = get_images_and_labels.get_query_set_images(cur_path, "qsd2")
 
+#Get Masks from the query set 2
+query_set2_masks = [cv2.cvtColor(mask, cv2.COLOR_BGR2GRAY).astype("bool") for mask in get_images_and_labels.get_qsd2_masks(cur_path)]
 
 # Fetches the histograms for the given dataset
 def get_histograms(dataset_name, color_space, mask, hist_size, hist_range):
@@ -171,5 +174,26 @@ def evaluate_all():
     # Removes all the pickle files
     [os.remove(file) for file in glob.glob(os.path.join(cur_path, '*.pkl'))]
 
+def evaluate_background_removal(query_set, query_set_masks):
+
+    predicted_masks = [background_removal.background_removal(image) for image in query_set]
+    enhanced_masks = []
+
+    for mask in predicted_masks:
+        enhanced_mask, _ = background_removal.enhance_mask(mask)
+        enhanced_masks.append(enhanced_mask)
+
+    #Evaluate Masks
+    scores = background_removal.evaluate_masks(enhanced_masks, query_set_masks)
+    mean_precision = np.mean([score[0] for score in scores])
+    mean_recall = np.mean([score[1] for score in scores])
+    mean_f1 = np.mean([score[2] for score in scores])
+
+    print(f"Average precision : {mean_precision} - Average recall : {mean_recall} - Average F1 : {mean_f1}")
+
 if __name__ =="__main__" :
-    evaluate_all()
+    #Query Set 1-2 painting retrieval.
+    #evaluate_all()
+
+    #Query Set 2 Background removal
+    evaluate_background_removal(query_set2_imgs, query_set2_masks)

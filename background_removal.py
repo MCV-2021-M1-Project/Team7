@@ -46,7 +46,7 @@ def background_removal(image, limit=10):
 
     return mask
 
-def enhance_mask(mask):
+def enhance_mask(mask, bw_min_ratio=0.6):
     """
     Enhance mask quality by removing artifacts.
     This functions takes a mask as input and return a better quality mask by keeping only the biggest connected component.
@@ -55,6 +55,8 @@ def enhance_mask(mask):
     ----------
     mask : numpy array
             An array containing the mask you want to enhance.
+    bw_min_ratio : float [0-1]
+            The minimum ratio of white pixel in a line for this line to be considered part of the mask.
     Returns
     -------
     mask : numpy array
@@ -80,7 +82,10 @@ def enhance_mask(mask):
     #Find the predicted mask contour (large)
     contours,_ = cv2.findContours(enhanced_mask.astype("uint8"), 1, 2)
     cnt = contours[0]
-    x,y,w,h = cv2.boundingRect(cnt)
+    
+    #Get the Bounding Box coordinates, check that it doesn't exceed array size
+    y,x,w,h = cv2.boundingRect(cnt)
+    w,h = min(w, mask.shape[1]-y-1), min(h, mask.shape[0]-x-1) 
 
     can_improve = True
 
@@ -89,7 +94,7 @@ def enhance_mask(mask):
         #Top, right, bottom, left corners average binary value.
         borders = [np.mean(enhanced_mask[x,y:(y+w)]), np.mean(enhanced_mask[x:(x+h),y+w]) , \
                                     np.mean(enhanced_mask[x+h,y:(y+w)]), np.mean(enhanced_mask[x:(x+h),y+w]) ]
-        if np.min(borders) < 0.6:
+        if np.min(borders) < bw_min_ratio:
             to_cut = np.argsort(borders)[0]
             if to_cut == 0:
                 x += 1
