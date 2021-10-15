@@ -26,6 +26,13 @@ def get_query_set_images(file_path, dataset_name="qsd1"):
     dataset_folder = os.path.join(file_path, dataset_name + "_w1")  
     return [cv2.imread(os.path.join(dataset_folder, img)) for img in os.listdir(dataset_folder) if img.endswith(".jpg")]
 
+def get_test_set_images(file_path, dataset_name="qst1"):
+    """
+    Get the images in the query sets
+    Dataset name argument should be "qst1" or "qst2"
+    """
+    dataset_folder = os.path.join(file_path, dataset_name + "_w1")  
+    return [cv2.imread(os.path.join(dataset_folder, img)) for img in os.listdir(dataset_folder) if img.endswith(".jpg")]
 
 def get_query_set_labels(file_path, dataset_name="qsd1"):
     """

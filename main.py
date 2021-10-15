@@ -196,4 +196,16 @@ if __name__ =="__main__" :
     #evaluate_all()
 
     #Query Set 2 Background removal
-    evaluate_background_removal(query_set2_imgs, query_set2_masks)
+    #evaluate_background_removal(query_set2_imgs, query_set2_masks)
+
+
+    #######################################
+    #TEST SETS
+    print("Prediciting test set")
+    test_set2_imgs = get_images_and_labels.get_test_set_images(cur_path, "qst2")
+    predicted_masks = [background_removal.background_removal(image) for image in test_set2_imgs]
+    enhanced_masks = [background_removal.enhance_mask(mask)[0] for mask in predicted_masks]
+
+    to_save_folder = "qst2_w1/results/"
+    for i in range(len(enhanced_masks)):
+        cv2.imwrite(to_save_folder + str.zfill(str(i),5) + ".png", enhanced_masks[i]*255)
