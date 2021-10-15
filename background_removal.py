@@ -48,9 +48,9 @@ def background_removal(image, limit=10):
 
 def enhance_mask(mask):
     """
-    #TO BE IMPROVED
     Enhance mask quality by removing artifacts.
     This functions takes a mask as input and return a better quality mask by keeping only the biggest connected component.
+    The mask is then beaing straightened.
     Parameters
     ----------
     mask : numpy array
@@ -74,8 +74,38 @@ def enhance_mask(mask):
             max_area = area
     
     enhanced_mask = np.array(im_labels == best_label)
+    
+    #Straighten the mask
 
-    return enhanced_mask
+    #Find the predicted mask contour (large)
+    contours,_ = cv2.findContours(enhanced_mask.astype("uint8"), 1, 2)
+    cnt = contours[0]
+    x,y,w,h = cv2.boundingRect(cnt)
+
+    can_improve = True
+
+    #If most of the border isn't predicted to be from the picture, cut the border by 1 pixel. 
+    while can_improve:
+        #Top, right, bottom, left corners average binary value.
+        borders = [np.mean(enhanced_mask[x,y:(y+w)]), np.mean(enhanced_mask[x:(x+h),y+w]) , \
+                                    np.mean(enhanced_mask[x+h,y:(y+w)]), np.mean(enhanced_mask[x:(x+h),y+w]) ]
+        if np.min(borders) < 0.6:
+            to_cut = np.argsort(borders)[0]
+            if to_cut == 0:
+                x += 1
+            elif to_cut == 1 :
+                w -= 1
+            elif to_cut == 2:
+                h -=1
+            elif to_cut == 3:
+                y += 1    
+        else:
+            can_improve = False
+
+    straight_mask = np.zeros_like(enhanced_mask).astype("bool")
+    straight_mask[x:(x+h),y:(y+w)] = True
+
+    return straight_mask, (x,y,w,h)
 
 def evaluate_mask(predicted_mask, true_mask):
     """
