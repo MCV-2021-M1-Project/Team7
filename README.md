@@ -1,10 +1,9 @@
 # Team7 - M1 - Introduction to Human and Computer Vision 
 
+## Team Members
 
-## Week 1 
+<li> Mert Yazan
+<li> Tino Margely
+<li> Berkay Arpacı
+<li> Razvan Apatean
 
-## Week 2 
-
-## Week 3 
-
-## Week 4 
