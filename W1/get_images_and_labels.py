@@ -18,28 +18,29 @@ def get_museum_dataset(file_path):
     return [cv2.imread(os.path.join(dataset_folder, img)) for img in os.listdir(dataset_folder) if img.endswith(".jpg")]
 
 
-def get_query_set_images(file_path, dataset_name="qsd1"):
+def get_query_set_images(file_path, dataset_name="qsd1_w1"):
     """
     Get the images in the query sets
-    Dataset name argument should be "qsd1" or "qsd2"
+    Dataset name argument should be "qsd1_w1" or "qsd2_w1"
     """
-    dataset_folder = os.path.join(file_path, dataset_name + "_w1")  
+    dataset_folder = os.path.join(file_path, dataset_name)  
     return [cv2.imread(os.path.join(dataset_folder, img)) for img in os.listdir(dataset_folder) if img.endswith(".jpg")]
 
-def get_test_set_images(file_path, dataset_name="qst1"):
+def get_test_set_images(file_path, dataset_name="qst1_w1"):
     """
     Get the images in the query sets
-    Dataset name argument should be "qst1" or "qst2"
+    Dataset name argument should be "qst1_w1" or "qst_2w1"
     """
-    dataset_folder = os.path.join(file_path, dataset_name + "_w1")  
+    dataset_folder = os.path.join(file_path, dataset_name)  
     return [cv2.imread(os.path.join(dataset_folder, img)) for img in os.listdir(dataset_folder) if img.endswith(".jpg")]
 
-def get_query_set_labels(file_path, dataset_name="qsd1"):
+
+def get_query_set_labels(file_path, dataset_name="qsd1_w1"):
     """
     Get the ground truth for the museum dataset
-    Dataset name argument should be "qsd1" or "qsd2"
+    Dataset name argument should be "qsd1_w1" or "qsd2_w1"
     """
-    lbls = open(os.path.join(file_path, dataset_name + "_w1", "gt_corresps.pkl"), 'rb')
+    lbls = open(os.path.join(file_path, dataset_name, "gt_corresps.pkl"), 'rb')
     return pickle.load(lbls)
 
 
@@ -48,7 +49,9 @@ def get_qsd2_masks(file_path):
     Get the ground truth for masks in query set 2
     """
     dataset_folder = os.path.join(file_path, "qsd2_w1")  
-    return [cv2.imread(os.path.join(dataset_folder, img)) for img in os.listdir(dataset_folder) if img.endswith(".png")]
+    return [cv2.cvtColor(cv2.imread(os.path.join(dataset_folder, img)), cv2.COLOR_BGR2GRAY).astype("bool")\
+            for img in os.listdir(dataset_folder) if img.endswith(".png")]
+
 
 if __name__ == "__main__":
     cur_path = os.getcwd()
@@ -56,13 +59,13 @@ if __name__ == "__main__":
     #Get Image Datasets
     print("### Getting Images ###")
     museum_imgs = get_museum_dataset(cur_path)
-    query_set1_imgs = get_query_set_images(cur_path, "qsd1")
-    query_set2_imgs = get_query_set_images(cur_path, "qsd2")
+    query_set1_imgs = get_query_set_images(cur_path, "qsd1_w1")
+    query_set2_imgs = get_query_set_images(cur_path, "qsd2_w1")
 
     #Get labels
     print("### Getting Labels ###")
-    query_set1_labels = get_query_set_labels(cur_path, "qsd1")
-    query_set2_labels = get_query_set_labels(cur_path, "qsd2")
+    query_set1_labels = get_query_set_labels(cur_path, "qsd1_w1")
+    query_set2_labels = get_query_set_labels(cur_path, "qsd2_w1")
     
     #Get Masks
     print("### Getting Masks ###")
