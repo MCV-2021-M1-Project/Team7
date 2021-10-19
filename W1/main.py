@@ -12,7 +12,7 @@ import glob
 import csv
 import background_removal as bg
 
-
+# Parser to get command line arguments
 def parse_args(args=sys.argv[1:]):
     parser = argparse.ArgumentParser()
 
@@ -66,13 +66,15 @@ def parse_args(args=sys.argv[1:]):
     return args
 
 
+# Removes background for all given images in the dataset
 def remove_background(imgs, eval_masks):
 
     print("Removing backgrounds!")
 
     if not os.path.exists(os.path.join(cur_path, "masks")):
         os.mkdir("masks")
-
+        
+    # Writes the created masks to masks folder
     res = []
     masks = []
     i = 0
@@ -83,6 +85,7 @@ def remove_background(imgs, eval_masks):
         i += 1
         res.append(img[x:(x+h),y:(y+w)])
 
+    # If evaluation is given, calculates precision, recall and f1 for masks
     if eval_masks:
         real_masks = get_images_and_labels.get_qsd2_masks(cur_path)
         mask_res = bg.evaluate_masks(masks, real_masks)
@@ -203,7 +206,8 @@ def test_query_set(query_set_imgs, eval_masks, query_set="qst1_w1", hist_method=
 
     return query_set_preds
 
-
+# For development query sets, try every possible combination of color spaces, distance metrics, 
+# hist methods and k values. Writes the result for each combination to a csv file.
 def evaluate_all(bins, pckl, eval_masks):
 
     with open("eval_results.csv", "w", encoding='UTF8', newline='') as f:
@@ -236,9 +240,10 @@ def evaluate_all(bins, pckl, eval_masks):
                                 pickle.dump(preds, file)
                             writer.writerow([query_set, clr_spc, distance_metric, hm, k, mAP])
 
-    [os.remove(file) for file in glob.glob(os.path.join(cur_path, '*.pkl'))]
+                            
 
-
+# For test query sets, try every possible combination of color spaces, distance metrics, 
+# hist methods and k values.
 def test_all(bins, pckl):
 
     for query_set in ["qst1_w1", "qst2_w1"]:
@@ -265,8 +270,6 @@ def test_all(bins, pckl):
                             file = open(os.path.join(cur_path, "test_results", file_name), "wb")
                             pickle.dump(preds, file)
 
-    [os.remove(file) for file in glob.glob(os.path.join(cur_path, '*.pkl'))]   
-
 
 if __name__ == '__main__':
 
@@ -285,7 +288,7 @@ if __name__ == '__main__':
     "LAB": cv2.COLOR_BGR2LAB
     }
 
-    # Get all 3 image datasets at the start
+    # Get museum dataset at the start
     print("### Getting Images ###")
     museum_imgs = get_images_and_labels.get_museum_dataset(cur_path)
 
