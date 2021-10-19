@@ -5,101 +5,96 @@ from distances import find_distance, distance_metrics
 from histogram import calc_3d_hist, calc_1d_hist
 import get_images_and_labels
 import evaluation as eval
-import background_removal
 import pickle
+import argparse
+import sys
 import glob
+import csv
+import background_removal as bg
 
 
-# You should change the path according to your computer
-# We can take the path as a command line argument
-#cur_path = "D://Belgeler//CV-Projects//M1//Week1"
-cur_path = os.getcwd()
+def parse_args(args=sys.argv[1:]):
+    parser = argparse.ArgumentParser()
 
-# Available color_spaces
-color_spaces = {
-"RGB": cv2.COLOR_BGR2RGB,
-"HSV": cv2.COLOR_BGR2HSV,
-"YCRCB": cv2.COLOR_BGR2YCrCb,
-"LAB": cv2.COLOR_BGR2LAB
-}
+    parser.add_argument(
+        "-all", "--all", action="store_true",
+        help = "See results for all possible combinations")
 
+    parser.add_argument(
+        "-p", "--pickle", action="store_true", default=True,
+        help = "Generate pickle file with results")
 
-# Get all 3 image datasets at the start
-museum_imgs = get_images_and_labels.get_museum_dataset(cur_path)
-query_set1_imgs = get_images_and_labels.get_query_set_images(cur_path, "qsd1")
-query_set2_imgs = get_images_and_labels.get_query_set_images(cur_path, "qsd2")
+    parser.add_argument(
+        "-m", "--mode", default="eval",
+        help = "Choose between evaluation and test modes: eval, test")
 
-#Get Masks from the query set 2
-query_set2_masks = [cv2.cvtColor(mask, cv2.COLOR_BGR2GRAY).astype("bool") for mask in get_images_and_labels.get_qsd2_masks(cur_path)]
+    parser.add_argument(
+        "-em", "--eval_masks", action="store_true", default=True,
+        help = "Choose whether there will be a mask evaluation")
 
-# Fetches the histograms for the given dataset
-def get_histograms(dataset_name, color_space, mask, hist_size, hist_range):
-    
-    """
-    Calculates the histogram for all the images in the dataset in the given color space
-    
-    Args:
-    
-    dataset_name: 'BBDD', 'qsd1' or 'qsd2'
-    color_space: 'RGB', 'HSV', 'LAB', 'YCRCB'
-    
-    Returns a list of histograms
-    """
+    parser.add_argument(
+        "-r", "--dataset_paths", default=os.getcwd(),
+        help = "Path to the folder where image datasets are. \
+                Each dataset should be in a folder in this path")
+        
+    parser.add_argument(
+        "-q", "--query_set", default="qsd1_w1",
+        help = "Which query set to use: qsd1_w1, qsd2_w2, qst_w1, qst_w2")
 
-    file_path = dataset_name + "_hist_" + color_space + ".pkl"
+    parser.add_argument(
+        "-cs", "--color_space",  default="YCRCB",
+        help = "Histogram calculation method: RGB, HSB, LAB, YCRCB")
 
-    # If the histograms are already calculated and stored in a pickle file
-    # reads the histograms from it
-    if os.path.exists(os.path.join(cur_path, file_path)):
+    parser.add_argument(
+        "-hm", "--hist_method", default="3d",
+        help = "Histogram calculation method: 1d, 3d")
 
-        file = open(os.path.join(cur_path, file_path), "rb")
-        imgs_hists = pickle.load(file)
+    parser.add_argument(
+        "-dm", "--distance_metric", default="hellinger",
+        help = "Similarity measure to compare images: \
+                cosine, manhattan, euclidean, intersect, kl_div, bhattacharyya, hellinger, chisqr, correlation")
 
+    parser.add_argument(
+        "-b", "--bins",default="8", type=int, 
+        help = "Number of bins to use for histograms.")
 
-    # If the histogram for the given dataset and color space isn't calculated before
-    # calculates it and writes it to a pickle file
-    elif dataset_name == "BBDD":
+    parser.add_argument(
+        "-k","--k", default="10", type=int,
+        help = "Mean average precision for top-K results")
 
-        imgs_cs = [cv2.cvtColor(museum_img, color_spaces[color_space]) \
-                  for museum_img in museum_imgs]
-        imgs_hists = [calc_3d_hist(img, mask, hist_size, hist_range) for img in imgs_cs]  
+    args = parser.parse_args(args)
+    return args
 
 
-    elif dataset_name == "qsd1":
+def remove_background(imgs, eval_masks):
 
-        imgs_cs = [cv2.cvtColor(query_img, color_spaces[color_space]) \
-                  for query_img in query_set1_imgs]
-        imgs_hists = [calc_3d_hist(query_img, mask, hist_size, hist_range) for query_img in imgs_cs]  
+    print("Removing backgrounds!")
+
+    if not os.path.exists(os.path.join(cur_path, "masks")):
+        os.mkdir("masks")
+
+    res = []
+    masks = []
+    i = 0
+    for img in imgs:
+        mask, (x,y,w,h) = bg.enhance_mask(bg.background_removal(img))
+        masks.append(mask)
+        cv2.imwrite(os.path.join("masks", str(i).zfill(5) + ".png"), mask.astype(np.int8)*255)
+        i += 1
+        res.append(img[x:(x+h),y:(y+w)])
+
+    if eval_masks:
+        real_masks = get_images_and_labels.get_qsd2_masks(cur_path)
+        mask_res = bg.evaluate_masks(masks, real_masks)
+        
+        print("Precision:", np.mean([i[0] for i in mask_res]), "Recall:", np.mean([i[1] for i in mask_res]),\
+               "F1:", np.mean([i[2] for i in mask_res]))
+
+    return res
 
 
-    elif dataset_name == "qsd2":
-
-        imgs_cs = [cv2.cvtColor(query_img, color_spaces[color_space]) \
-                  for query_img in query_set2_imgs]
-        imgs_hists = [calc_3d_hist(query_img, mask, hist_size, hist_range) for query_img in imgs_cs]  
-
-    else:
-        raise Exception("Dataset name should be 'BBDD', 'qsd1' or 'qsd2'!!")
-
-
-    file = open(file_path, "wb")
-    pickle.dump(imgs_hists, file)   
-
-    return imgs_hists
-
-
-# Calculate the distance of the given image's histogram with the histograms of museum dataset 
-# with the given distance metric
+# Search for an image in the museum dataset with the given distance metric
 def image_search(hist1, hist2_arr, distance_metric="cosine", k=5):
-    
-    """
-    Args: 
-    
-    hist1 = Histogram of the image we want to find
-    hist2_arr = List of all the histograms of the museum dataset    
-    
-    Returns top k predictions which have the least distance with hist1
-    """
 
     res = [find_distance(hist1, mus_hist, distance_metric) for mus_hist in hist2_arr]
     pred = np.argsort(np.array(res))[:k]
@@ -107,105 +102,217 @@ def image_search(hist1, hist2_arr, distance_metric="cosine", k=5):
     return list(pred)
 
 
+# Fetches the histograms for the given dataset
+def get_histograms(dataset_name, imgs, hist_method, clr_spc, hist_size):
+
+    print("Getting the histograms for the", dataset_name)
+
+    if not os.path.exists(os.path.join(cur_path, "histograms")):
+        os.mkdir("histograms")
+
+    file_name =  "-".join(("Hist", dataset_name, hist_method, clr_spc, str(hist_size))) + ".pkl"
+    file_path = os.path.join("histograms", file_name)
+
+    # If the histograms are already calculated and stored in a pickle file
+    # reads them from it
+    if os.path.exists(os.path.join(cur_path, file_path)):
+
+        file = open(os.path.join(cur_path, file_path), "rb")
+        imgs_hists = pickle.load(file)
+
+    # If the histogram for the given dataset and color space isn't calculated before
+    # calculates and writes it to a pickle file
+    else: 
+        imgs_cs = [cv2.cvtColor(img, color_spaces[clr_spc]) \
+                  for img in imgs]
+
+        if hist_method == "1d":
+            imgs_hists = [calc_1d_hist(img, clr_spc, hist_size) for img in imgs_cs] 
+
+        elif hist_method == "3d":
+            imgs_hists = [calc_3d_hist(img, clr_spc, hist_size) for img in imgs_cs] 
+
+        else:
+            raise Exception("Hist method should be '1d' or '3d'!!")
+
+        file = open(file_path, "wb")
+        pickle.dump(imgs_hists, file)   
+
+    return imgs_hists
+
+
 # Find an image in the museum dataset
-def find_single_image(img, hist_size=[16,16,16], hist_range=[0,256,0,256,0,256], \
-                      mask=None, color_space="RGB", distance_metric="cosine", k=5):
-    
-    """
-    Find the image in the museum dataset
-    
-    Args:
-    
-    img: Should be a numpy array
-    
-    Returns a list of best k predictions
-    """
+def find_single_image(img, hist_method="3d", clr_spc="RGB", hist_size=[16,16,16], distance_metric="cosine", k=5):
 
-    img_hist = calc_3d_hist(img, mask, hist_size, hist_range)
+    img_hist = calc_3d_hist(img, clr_spc, hist_size)
 
-    return image_search(img_hist, get_histograms("BBDD", color_space, mask, hist_size, hist_range), distance_metric, k)  
+    return image_search(img_hist, get_histograms("BBDD", hist_method, clr_spc, hist_size), distance_metric, k)  
 
 
 # Evaluate the whole query set with the given conditions
-def evaluate_query_set(query_set="qsd1", color_space="RGB", distance_metric="cosine", k=5, \
-                       hist_size=[16,16,16], hist_range=[0,256,0,256,0,256], mask=None):
-    
-    """
-    Evaluates the whole query set for the given parameters
-    
-    Args:
-    
-    query_set: 'qsd1' or 'qsd2'
-    color_space: 'RGB', 'HSV', 'LAB', 'YCRCB'
-    
-    Returns the predictions of all the images in a list of lists and the mean average precision for the query
-    """
+def evaluate_query_set(query_set_imgs, eval_masks, query_set="qsd1_w1", hist_method="3d", clr_spc="RGB", distance_metric="cosine", k=5, \
+                       hist_size=16, pckl=True):
 
-    # Get the histograms
-    museum_imgs_hists = get_histograms("BBDD", color_space, mask, hist_size, hist_range)   
-    query_imgs_hists = get_histograms(query_set, color_space, mask, hist_size, hist_range)
+    museum_imgs_hists = get_histograms("BBDD", museum_imgs, hist_method, clr_spc, hist_size) 
 
-    # Get ground truth labels
+    query_imgs_hists = get_histograms(query_set, query_set_imgs, hist_method, clr_spc, hist_size)
+
     qs_labels = get_images_and_labels.get_query_set_labels(cur_path, query_set)
 
-    # For each image find the top k predictions
+    print("Getting results for the validation set", query_set)
     query_set_preds = []
     for query_hist in query_imgs_hists:
         query_set_preds.append(image_search(query_hist, museum_imgs_hists, distance_metric, k))
 
-    # Calculate mean average precision for the whole query set
     map = round(eval.mapk(qs_labels, query_set_preds, k), 4)
-    print("For Color Space:", color_space, "and Distance Metric:", distance_metric, \
-          "and k:", k, "AP is: ", map)
+    print("For Color Space:", clr_spc, "and Distance Metric:", distance_metric, \
+          "and Hist. Method:", hist_method, "and k:", k, "AP is: ", map)
+
+    if pckl:
+        if not os.path.exists(os.path.join(cur_path, "eval_results")):
+            os.mkdir("eval_results")
+
+        file_name = "-".join((query_set, clr_spc, distance_metric, hist_method)) + ".pkl"
+        file = open(os.path.join(cur_path, "eval_results", file_name), "wb")
+        pickle.dump(query_set_preds, file)
 
     return query_set_preds, map
-    
-    
-# Evaluate both query sets for all the possible color space 
-# and distance metric combinations and for k=1 and k=5 
-def evaluate_all():
-    for query_set in ["qsd1","qsd2"]:
-        print(query_set)
-        for clr_spc in color_spaces.keys():
-            for distance_metric in distance_metrics.keys():
-                for k in [1,5]:
-                    evaluate_query_set(query_set, clr_spc, distance_metric, k, hist_size=[24,24,24])
-                    
-    # Removes all the pickle files
+
+
+# Test the whole query set with the given conditions
+def test_query_set(query_set_imgs, eval_masks, query_set="qst1_w1", hist_method="3d", clr_spc="RGB", 
+                  distance_metric="cosine", k=5, hist_size=16, pckl=True):
+
+    museum_imgs_hists = get_histograms("BBDD", museum_imgs, hist_method, clr_spc, hist_size)  
+
+    query_imgs_hists = get_histograms(query_set, query_set_imgs, hist_method, clr_spc, hist_size)
+
+    print("Getting results for the test set!")
+
+    query_set_preds = []
+    for query_hist in query_imgs_hists:
+        query_set_preds.append(image_search(query_hist, museum_imgs_hists, distance_metric, k))
+
+    if pckl:
+        if not os.path.exists(os.path.join(cur_path, "test_results")):
+            os.mkdir("test_results")
+
+        file_name = "-".join((query_set, clr_spc, distance_metric, hist_method)) + ".pkl"
+        file = open(os.path.join(cur_path, "test_results", file_name), "wb")
+        pickle.dump(query_set_preds, file)
+
+    return query_set_preds
+
+
+def evaluate_all(bins, pckl, eval_masks):
+
+    with open("eval_results.csv", "w", encoding='UTF8', newline='') as f:
+
+        header = ['Query_Set', 'Color_Space', 'Distance_Metric', 'Hist_Method', 'K', "mAP"]
+        writer = csv.writer(f)
+        writer.writerow(header)
+
+        for query_set in ["qsd1_w1", "qsd2_w1"]:
+            print(query_set)
+            query_set_imgs = get_images_and_labels.get_query_set_images(cur_path, query_set)
+
+            if query_set == "qsd2_w1":
+                query_set_imgs = remove_background(query_set_imgs, eval_masks)     
+
+            for clr_spc in color_spaces.keys():
+                for distance_metric in distance_metrics.keys():
+
+                    for hm in ["1d", "3d"]:
+                        for k in [1,5,10]:
+                            preds, mAP = evaluate_query_set(query_set_imgs, eval_masks, 
+                                                            query_set, hm, clr_spc, distance_metric, k, hist_size=bins)
+
+                            if pckl:
+                                if not os.path.exists(os.path.join(cur_path, "eval_results")):
+                                    os.mkdir("eval_results")
+
+                                file_name = "-".join((query_set, clr_spc, distance_metric, hm)) + ".pkl"
+                                file = open(os.path.join(cur_path, "eval_results", file_name), "wb")
+                                pickle.dump(preds, file)
+                            writer.writerow([query_set, clr_spc, distance_metric, hm, k, mAP])
+
     [os.remove(file) for file in glob.glob(os.path.join(cur_path, '*.pkl'))]
 
-def evaluate_background_removal(query_set, query_set_masks):
 
-    predicted_masks = [background_removal.background_removal(image) for image in query_set]
-    enhanced_masks = []
+def test_all(bins, pckl):
 
-    for mask in predicted_masks:
-        enhanced_mask, _ = background_removal.enhance_mask(mask)
-        enhanced_masks.append(enhanced_mask)
+    for query_set in ["qst1_w1", "qst2_w1"]:
 
-    #Evaluate Masks
-    scores = background_removal.evaluate_masks(enhanced_masks, query_set_masks)
-    mean_precision = np.mean([score[0] for score in scores])
-    mean_recall = np.mean([score[1] for score in scores])
-    mean_f1 = np.mean([score[2] for score in scores])
+        print(query_set)
+        query_set_imgs = get_images_and_labels.get_query_set_images(cur_path, query_set)
+        if query_set == "qst2_w1":
+            query_set_imgs = remove_background(query_set_imgs, False)
 
-    print(f"Average precision : {mean_precision} - Average recall : {mean_recall} - Average F1 : {mean_f1}")
+        for clr_spc in color_spaces.keys():
 
-if __name__ =="__main__" :
-    #Query Set 1-2 painting retrieval.
-    #evaluate_all()
+            for distance_metric in distance_metrics.keys():
 
-    #Query Set 2 Background removal
-    evaluate_background_removal(query_set2_imgs, query_set2_masks)
+                for hm in ["1d", "3d"]:
+
+                    for k in [1,5,10]:
+                        preds = test_query_set(query_set_imgs, False, query_set, hm, clr_spc, distance_metric, k, hist_size=bins)
+                        if pckl:
+
+                            if not os.path.exists(os.path.join(cur_path, "test_results")):
+                                os.mkdir("test_results")
+
+                            file_name = "-".join((query_set, clr_spc, distance_metric, hm)) + ".pkl"
+                            file = open(os.path.join(cur_path, "test_results", file_name), "wb")
+                            pickle.dump(preds, file)
+
+    [os.remove(file) for file in glob.glob(os.path.join(cur_path, '*.pkl'))]   
 
 
-    #######################################
-    #TEST SETS
-    #print("Prediciting test set")
-    #test_set2_imgs = get_images_and_labels.get_test_set_images(cur_path, "qst2")
-    #predicted_masks = [background_removal.background_removal(image) for image in test_set2_imgs]
-    #enhanced_masks = [background_removal.enhance_mask(mask)[0] for mask in predicted_masks]
+if __name__ == '__main__':
 
-    #to_save_folder = "qst2_w1/results/"
-    #for i in range(len(enhanced_masks)):
-        #cv2.imwrite(to_save_folder + str.zfill(str(i),5) + ".png", enhanced_masks[i]*255)
+    args = parse_args()
+    print("Passed arguments are:", args)
+
+    # You should change the path according to your computer
+    # We can take the path as a command line argument
+    cur_path = args.dataset_paths
+
+    # Available color_spaces
+    color_spaces = {
+    "RGB": cv2.COLOR_BGR2RGB,
+    "HSV": cv2.COLOR_BGR2HSV,
+    "YCRCB": cv2.COLOR_BGR2YCrCb,
+    "LAB": cv2.COLOR_BGR2LAB
+    }
+
+    # Get all 3 image datasets at the start
+    print("### Getting Images ###")
+    museum_imgs = get_images_and_labels.get_museum_dataset(cur_path)
+
+    if args.all:
+    
+        if args.mode == "eval":
+            evaluate_all(args.bins, args.pickle, args.eval_masks)
+
+        else:
+            test_all(args.bins, args.pickle)
+
+    else:
+
+        query_set_imgs = get_images_and_labels.get_query_set_images(cur_path, args.query_set)
+
+        if args.query_set == "qsd2_w1":
+            query_set_imgs = remove_background(query_set_imgs, args.eval_masks)  
+
+        elif args.query_set == "qst2_w1":
+            query_set_imgs = remove_background(query_set_imgs, False) 
+
+        if args.mode == "eval":
+            evaluate_query_set(query_set_imgs, args.eval_masks, args.query_set, args.hist_method, 
+                               args.color_space, args.distance_metric, args.k, args.bins, args.pickle)
+
+        else:
+            test_query_set(query_set_imgs, args.eval_masks, args.query_set, args.hist_method, 
+                           args.color_space, args.distance_metric, args.k, args.bins, args.pickle)
+
+
