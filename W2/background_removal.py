@@ -1,3 +1,4 @@
+from typing import List, Tuple
 import cv2
 import numpy as np
 
@@ -48,7 +49,7 @@ def background_removal(image, limit=10):
 
     return mask
 
-def enhance_mask(mask:np.ndarray, bw_min_ratio:float=0.6) -> np.ndarray:
+def enhance_mask(mask:np.ndarray, bw_min_ratio:float=0.6) -> Tuple[np.ndarray, Tuple[int,int,int,int]]:
     """
     Enhance mask quality by removing artifacts.
     This functions takes a mask as input and return a better quality mask by keeping only the biggest connected component.
@@ -72,7 +73,7 @@ def enhance_mask(mask:np.ndarray, bw_min_ratio:float=0.6) -> np.ndarray:
 
     return straight_mask, (x,y,w,h)
 
-def straighten_mask(mask:np.ndarray, bw_min_ratio:float=0.6):
+def straighten_mask(mask:np.ndarray, bw_min_ratio:float=0.6) -> Tuple[np.ndarray, Tuple[int,int,int,int]]:
     """
     This functions takes a mask as input and return a better quality mask by straightening it.
     Parameters
@@ -96,7 +97,7 @@ def straighten_mask(mask:np.ndarray, bw_min_ratio:float=0.6):
     #Get the Bounding Box coordinates, check that it doesn't exceed array size
     y,x,w,h = cv2.boundingRect(cnt)
     w,h = min(w, mask.shape[1]-y-1), min(h, mask.shape[0]-x-1) 
-
+    
     can_improve = True
 
     #If most of the border isn't predicted to be from the picture, cut the border by 1 pixel. 
@@ -151,10 +152,10 @@ def get_biggest_connected_component(mask:np.ndarray) -> np.ndarray:
 
     return np.array(im_labels == best_label)
 
-def enhance_mask_multi(mask, bw_min_ratio=0.6):
+def enhance_mask_multi(mask:np.ndarray, bw_min_ratio:float=0.6) :
     """
     Enhance mask quality by removing artifacts.
-    This functions takes a mask as input and return a better quality mask by keeping only the biggest connected component.
+    This functions takes a mask as input and return a better quality mask by keeping only the biggest connected components.
     The mask is then beaing straightened.
     Parameters
     ----------
@@ -167,20 +168,53 @@ def enhance_mask_multi(mask, bw_min_ratio=0.6):
     mask : numpy array
             The enhanced mask.
     """
+    #Maximum number of paintings on the same image.
     MAX_PAINTINGS = 2
-    OCCUPANCY_THTRRESHOLD = 0.15
+    
+    #Percentage of the image occupied by the connected component to be considered a painting
+    OCCUPANCY_THTRRESHOLD = 0.10
 
     bboxes = []
     final_mask = np.zeros_like(mask)
 
     for i in range(MAX_PAINTINGS):
         biggest_component = get_biggest_connected_component(mask)
+        
         mask -= biggest_component
 
-        if np.sum(biggest_component) > OCCUPANCY_THTRRESHOLD:
-
+        #If the connected component is a painting
+        if np.mean(biggest_component) > OCCUPANCY_THTRRESHOLD:
+            #We straighten the mask and get the bounding box coordinates
             straight_mask, bbox = straighten_mask(mask = biggest_component, bw_min_ratio=bw_min_ratio)
+            
             final_mask += straight_mask
             bboxes.append(bbox)
     
     return final_mask, bboxes
+
+def extract_paintings_from_image(image:np.ndarray) -> List[np.ndarray]:
+    """
+    Extracts paintings from an image.
+    This functions takes an image as an input and returns a list of images corresponding to the paintings found in the image.
+    Parameters
+    ----------
+    image : numpy array
+            An array containing the image you want to extract the paintings from.
+    Returns
+    -------
+    paintings : List[numpy array]
+            
+    """
+    paintings = []
+    
+    print(paintings)
+
+    mask = background_removal(image=image)
+    enhanced_mask, bboxes = enhance_mask_multi(mask=mask)
+
+
+    for bbox in bboxes:
+        x,y,w,h = bbox
+        paintings.append(image[x:x+h, y:y+w,:])
+
+    return paintings
