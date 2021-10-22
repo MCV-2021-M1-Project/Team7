@@ -93,4 +93,18 @@ def find_single_image(img, level, hist_method="3d", clr_spc="RGB", hist_size=[16
 
     img_hist = pyramid_rep_hist(img, level, clr_spc, hist_method, hist_size)
 
-    return image_search(img_hist, get_histograms("BBDD", hist_method, clr_spc, hist_size), distance_metric, k)  
+    return image_search(img_hist, get_histograms("BBDD", hist_method, clr_spc, hist_size), distance_metric, k) 
+
+#Calculates the opening of an image
+def opening(image, size=(30, 30)):
+    kernel = np.ones(size, np.uint8) 
+    image = cv2.erode(image, kernel, iterations=1) 
+    image = cv2.dilate(image, kernel, iterations=1) 
+    return image
+
+#Calculates the closing of an image
+def closing(image, size=(30, 30)):
+    kernel = np.ones(size, np.uint8) 
+    image = cv2.dilate(image, kernel, iterations=1) 
+    image = cv2.erode(image, kernel, iterations=1) 
+    return image
