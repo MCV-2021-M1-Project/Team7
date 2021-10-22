@@ -1,3 +1,4 @@
+from typing import List
 import numpy as np
 import utils
 import pickle
@@ -6,6 +7,7 @@ import time
 import csv
 from distances import find_distance, distance_metrics
 import get_images_and_labels
+import background_removal as bg
 
 def apk(actual, predicted, k=10):
     """

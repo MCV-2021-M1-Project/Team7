@@ -97,7 +97,7 @@ def straighten_mask(mask:np.ndarray, bw_min_ratio:float=0.6) -> Tuple[np.ndarray
     #Get the Bounding Box coordinates, check that it doesn't exceed array size
     y,x,w,h = cv2.boundingRect(cnt)
     w,h = min(w, mask.shape[1]-y-1), min(h, mask.shape[0]-x-1) 
-    
+
     can_improve = True
 
     #If most of the border isn't predicted to be from the picture, cut the border by 1 pixel. 
@@ -203,15 +203,12 @@ def extract_paintings_from_image(image:np.ndarray) -> List[np.ndarray]:
     Returns
     -------
     paintings : List[numpy array]
-            
+            A list of images corresponding to the paintings found in the image.
     """
     paintings = []
-    
-    print(paintings)
 
     mask = background_removal(image=image)
     enhanced_mask, bboxes = enhance_mask_multi(mask=mask)
-
 
     for bbox in bboxes:
         x,y,w,h = bbox
