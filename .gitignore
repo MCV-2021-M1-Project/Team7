@@ -1,7 +1,12 @@
 __pycache__/
 BBDD/
-qsd1_w1/
-qsd2_w1/
-qst1_w1/
-qst2_w1/
-saved_images/
+
+W1/qsd1_w1/
+W1/qsd2_w1/
+W1/qst1_w1/
+W1/qst2_w1/
+W1/saved_images/
+
+W2/qsd2_w1/
+W2/qsd1_w2/
+W2/qsd2_w2/
