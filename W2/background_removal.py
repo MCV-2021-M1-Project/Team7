@@ -125,13 +125,15 @@ def straighten_mask(mask:np.ndarray, bw_min_ratio:float=0.6) -> Tuple[np.ndarray
     
     return straight_mask, (x,y,w,h)
 
-def get_biggest_connected_component(mask:np.ndarray) -> np.ndarray:
+def get_biggest_connected_component(mask:np.ndarray, check_bg:bool=True) -> np.ndarray:
     """
     Gets the biggest connected component from a mask.
     Parameters
     ----------
     mask: numpy array
         An array containing the mask you want to extract the biggest connected component.
+    check_th : bool
+        A boolean indicating whether or not we skip the connected component containing mainly 0.
     Returns
     ----------
     mask : numpy array
@@ -142,7 +144,9 @@ def get_biggest_connected_component(mask:np.ndarray) -> np.ndarray:
     max_area, best_label = 0 , -1
     for label in range(num_labels):
     #If the background area is larger than the picture, we don't want the background
-        if im_labels[0,0] == label:
+        #if im_labels[0,0] == label and check_tl :
+            #continue
+        if np.max(mask[im_labels == label]) == 0  and check_bg:
             continue
 
         area = np.sum(im_labels == label)
@@ -211,7 +215,7 @@ def extract_paintings_from_image(image:np.ndarray) -> List[np.ndarray]:
     enhanced_mask, bboxes = enhance_mask_multi(mask=mask)
 
     for bbox in bboxes:
-        x,y,w,h = bbox
-        paintings.append(image[x:x+h, y:y+w,:])
+        y,x,w,h = bbox
+        paintings.append(image[y:y+h, x:x+w,:])
 
     return paintings
