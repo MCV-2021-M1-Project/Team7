@@ -13,28 +13,25 @@ def blackhat(img:np.ndarray, size=(25,25)) -> np.ndarray:
 
     img_orig = cv2.morphologyEx(img, cv2.MORPH_BLACKHAT, kernel)
     
-    TH = 150
-    img_orig[(img_orig[:,:,0] < TH) | (img_orig[:,:,1] < TH) | (img_orig[:,:,2] < TH)] = (0,0,0)
+    THRESHOLD = 150
+    img_orig[(img_orig[:,:,0] < THRESHOLD) | (img_orig[:,:,1] < THRESHOLD) | (img_orig[:,:,2] < THRESHOLD)] = (0,0,0)
     
     img_orig = closing(img_orig, size=(10, int(img_orig.shape[1]/6) ))
     
-    return (cv2.cvtColor(img_orig, cv2.COLOR_BGR2GRAY) != 0).astype(np.uint8)
+    return (cv2.cvtColor(img_orig, cv2.COLOR_BGR2GRAY) != 0)
 
 
 def tophat(img:np.ndarray, size=(25,25)) -> np.ndarray :
-    """
-
-    """
     kernel = np.ones(size, np.uint8) 
 
     img_orig = cv2.morphologyEx(img, cv2.MORPH_TOPHAT, kernel)
     
-    TH = 150
-    img_orig[(img_orig[:,:,0] < TH) | (img_orig[:,:,1] < TH) | (img_orig[:,:,2] < TH)] = (0,0,0)
+    THRESHOLD = 150
+    img_orig[(img_orig[:,:,0] < THRESHOLD) | (img_orig[:,:,1] < THRESHOLD) | (img_orig[:,:,2] < THRESHOLD)] = (0,0,0)
     
     img_orig = closing(img_orig, size=(10, int(img_orig.shape[1]/6) ) )
 
-    return (cv2.cvtColor(img_orig, cv2.COLOR_BGR2GRAY) != 0).astype(np.uint8)
+    return (cv2.cvtColor(img_orig, cv2.COLOR_BGR2GRAY) != 0)
 
 
 def get_textbox_score(mask:np.ndarray) -> float:
