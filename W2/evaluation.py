@@ -1,6 +1,6 @@
 from typing import List
 import numpy as np
-import utils
+from utils import *
 import pickle
 import os
 import time
@@ -8,6 +8,7 @@ import csv
 from distances import find_distance, distance_metrics
 import get_images_and_labels
 import background_removal as bg
+
 
 def apk(actual, predicted, k=10):
     """
@@ -27,21 +28,28 @@ def apk(actual, predicted, k=10):
     score : double
             The average precision at k over the input lists
     """
-    if len(predicted)>k:
-        predicted = predicted[:k]
+    #print(f"{actual} VS {predicted}")
+    scores = []
+    
+    #print((actual, predicted))
+    for (actual, predicted) in zip(actual, predicted):
+        #print(f">{(actual, predicted)}")
+        if len(predicted) > k:
+            predicted = predicted[:k]
 
-    score = 0.0
-    num_hits = 0.0
+        score = 0.0
+        num_hits = 0.0
 
-    for i,p in enumerate(predicted):
-        if p in actual and p not in predicted[:i]:
-            num_hits += 1.0
-            score += num_hits / (i+1.0)
+        for i, p in enumerate(predicted):
+            if p == actual and p not in predicted[:i]:
+                num_hits += 1.0
+                score += num_hits / (i + 1.0)
 
-    if not actual:
-        return 0.0
-
-    return score / min(len(actual), k)
+        if not actual:
+            scores.append(0.0)
+        else:
+            scores.append(score / min(1, k))
+    return scores
 
 
 def mapk(actual, predicted, k=10):
@@ -52,7 +60,7 @@ def mapk(actual, predicted, k=10):
     Parameters
     ----------
     actual : list
-             A list of lists of elements that are to be predicted 
+             A list of lists of elements that are to be predicted
              (order doesn't matter in the lists)
     predicted : list
                 A list of lists of predicted elements
@@ -64,22 +72,72 @@ def mapk(actual, predicted, k=10):
     score : double
             The mean average precision at k over the input lists
     """
-    return np.mean([apk(a,p,k) for a,p in zip(actual, predicted)])
+    apks = [apk(a, p, k) for a, p in zip(actual, predicted)]
+    return np.mean([a for a_s in apks for a in a_s])
 
 
-def evaluate_query_set(query_set_imgs, museum_imgs, cur_path, level, query_set="qsd1_w2", hist_method="3d", clr_spc="RGB", 
-                        distance_metric="cosine", k=5, hist_size=16, pckl=True):
+# Evaluate the whole query set with the given conditions
+def evaluate_query_set(query_set_imgs, museum_imgs, cur_path, level, query_set="qsd2_w2", hist_method="3d", clr_spc="RGB", 
+                       distance_metric="cosine", k=5, hist_size=16, pckl=True):
 
-    museum_imgs_hists = utils.get_histograms("BBDD", cur_path, museum_imgs, level, hist_method, clr_spc, hist_size) 
+    """
+    Parameters
+    ----------
+    query_set_imgs = list of numpy array
+                     List of images of the query set which is going to be evaluated.
 
-    query_imgs_hists = utils.get_histograms(query_set, cur_path, query_set_imgs, level, hist_method, clr_spc, hist_size)
+    museum_imgs = list of numpy array
+                  List of images of the museum images.
 
-    qs_labels = utils.get_images_and_labels.get_query_set_labels(cur_path, query_set)
+    cur_path = string
+               Current working path
+
+    level =  int
+             Image split level
+
+    query_set = string, optional
+                Name of the query set which is going to be evaluated.
+
+    hist_method = string, optional
+                  Which histogram is going to be used? 
+
+    clr_spc = string, optional
+              What color space is going to be used?
+
+    distance_metric = string, optional
+                      Distance metric you want to use, it should be
+                      from the available metrics.
+
+    k =  int, optional
+          Determines how many top results to get.
+
+    hist_size = int, optional
+                Size of the bins of histograms.
+
+    pckl = boolean, optional
+           Whether to write results to a pickle file.
+
+    Returns 
+    ----------
+    query_set_preds, map: list of lists of integers and float
+                          Returns the indexes of the predictions and mean average precision.
+
+    """                        
+
+    museum_imgs_hists = get_histograms("BBDD", cur_path, museum_imgs, level, hist_method, clr_spc, hist_size) 
+    query_imgs_hists = get_histograms(query_set, cur_path, query_set_imgs, level, hist_method, clr_spc, hist_size)
+
+    qs_labels = get_images_and_labels.get_query_set_labels(cur_path, query_set)
 
     print("Getting results for the validation set", query_set)
+
     query_set_preds = []
-    for query_hist in query_imgs_hists:
-        query_set_preds.append(utils.image_search(query_hist, museum_imgs_hists, distance_metric, k))
+    
+    for temp_hist in query_imgs_hists:
+        temp_preds = []
+        for query_hist in temp_hist:
+            temp_preds.append(image_search(query_hist, museum_imgs_hists, distance_metric, k))
+        query_set_preds.append(temp_preds)
 
     map = round(mapk(qs_labels, query_set_preds, k), 4)
     print("For Color Space:", clr_spc, "and Distance Metric:", distance_metric, \
@@ -89,7 +147,7 @@ def evaluate_query_set(query_set_imgs, museum_imgs, cur_path, level, query_set="
         if not os.path.exists(os.path.join(cur_path, "eval_results")):
             os.mkdir("eval_results")
 
-        file_name = "-".join((query_set, clr_spc, distance_metric, str(level), hist_method)) + ".pkl"
+        file_name = "-".join((query_set, clr_spc, distance_metric, str(level), hist_method, str(hist_size))) + ".pkl"
         file = open(os.path.join(cur_path, "eval_results", file_name), "wb")
         pickle.dump(query_set_preds, file)
 
@@ -100,28 +158,95 @@ def evaluate_query_set(query_set_imgs, museum_imgs, cur_path, level, query_set="
 def test_query_set(query_set_imgs, museum_imgs, cur_path, level, query_set="qst1_w2", hist_method="3d", clr_spc="RGB", 
                    distance_metric="cosine", k=5, hist_size=16, pckl=True):
 
-    museum_imgs_hists = utils.get_histograms("BBDD", cur_path, museum_imgs, level, hist_method, clr_spc, hist_size)  
+    """
+    Parameters
+    ----------
+    query_set_imgs = list of numpy array
+                     List of images of the query set which is going to be evaluated.
 
-    query_imgs_hists = utils.get_histograms(query_set, cur_path, query_set_imgs, level, hist_method, clr_spc, hist_size)
+    museum_imgs = list of numpy array
+                  List of images of the museum images.
+
+    cur_path = string
+               Current working path
+
+    level =  int
+             Image split level
+
+    query_set = string, optional
+                Name of the query set which is going to be evaluated.
+
+    hist_method = string, optional
+                  Which histogram is going to be used? 
+
+    clr_spc = string, optional
+              What color space is going to be used?
+
+    distance_metric = string, optional
+                      Distance metric you want to use, it should be
+                      from the available metrics.
+
+    k =  int, optional
+          Determines how many top results to get.
+
+    hist_size = int, optional
+                Size of the bins of histograms.
+
+    Returns 
+    ----------
+    query_set_preds, map: list of lists of integers and float
+                          Returns the indexes of the predictions and mean average precision.
+
+    """    
+
+    museum_imgs_hists = get_histograms("BBDD", cur_path, museum_imgs, level, hist_method, clr_spc, hist_size)  
+    query_imgs_hists = get_histograms(query_set, cur_path, query_set_imgs, level, hist_method, clr_spc, hist_size)
 
     print("Getting results for the test set!")
 
     query_set_preds = []
-    for query_hist in query_imgs_hists:
-        query_set_preds.append(utils.image_search(query_hist, museum_imgs_hists, distance_metric, k))
+
+    for temp_hist in query_imgs_hists:
+        temp_preds = []
+        for query_hist in temp_hist:
+            temp_preds.append(image_search(query_hist, museum_imgs_hists, distance_metric, k))
+        query_set_preds.append(temp_preds)
 
     if pckl:
         if not os.path.exists(os.path.join(cur_path, "test_results")):
             os.mkdir("test_results")
 
-        file_name = "-".join((query_set, clr_spc, distance_metric, str(level), hist_method)) + ".pkl"
+        file_name = "-".join((query_set, clr_spc, distance_metric, str(level), hist_method, str(hist_size))) + ".pkl"
         file = open(os.path.join(cur_path, "test_results", file_name), "wb")
         pickle.dump(query_set_preds, file)
 
     return query_set_preds
 
 
+# Evaluate validation query sets for each combination of
+# color spaces, distance metrics and histogram methods.
+
 def evaluate_all(bins, pckl, cur_path, level, eval_masks):
+
+    """
+    Parameters
+    ----------
+    bins = int
+           Size of the histogram bins
+
+    pckl = boolean, optional
+           Whether to write results to a pickle file.
+
+    cur_path = string
+               Current working path
+
+    level =  int
+             Image split level
+
+    eval_masks = boolean
+                 Whether to do evaluation on mask results.
+
+    """    
 
     print("### Getting Images ###")
     museum_imgs = get_images_and_labels.get_museum_dataset(cur_path)
@@ -132,36 +257,46 @@ def evaluate_all(bins, pckl, cur_path, level, eval_masks):
         writer = csv.writer(f)
         writer.writerow(header)
 
-        for query_set in ["qsd2_w1"]:
+        for query_set in ["qsd1_w2", "qsd2_w2"]:
             start_time = time.time()
-        ##"qsd1_w2", "qsd2_w2"]:
             print(query_set)
-            query_set_imgs = utils.get_images_and_labels.get_query_set_images(cur_path, query_set)
+            query_set_imgs = get_images_and_labels.get_query_set_images(cur_path, query_set)
 
-            if query_set in ["qsd2_w1", "qsd2_w2"]:
-                query_set_imgs = utils.remove_background(query_set_imgs, cur_path, query_set, eval_masks)     
+            if query_set == "qsd2_w2":
+                query_set_imgs = remove_background(query_set_imgs, cur_path, query_set, eval_masks)     
 
-            for clr_spc in utils.color_spaces().keys():
+            for clr_spc in color_spaces().keys():
                 for distance_metric in distance_metrics.keys():
 
                     for hm in ["1d", "3d"]:
                         for k in [1,5,10]:
-                            preds, mAP = evaluate_query_set(query_set_imgs, museum_imgs, cur_path, level, 
-                                                            query_set, hm, clr_spc, distance_metric, k, hist_size=bins)
+                            _, mAP = evaluate_query_set(query_set_imgs, museum_imgs, cur_path, level, 
+                                                        query_set, hm, clr_spc, distance_metric, k, hist_size=bins, pckl=pckl)
 
-                            if pckl:
-                                if not os.path.exists(os.path.join(cur_path, "eval_results")):
-                                    os.mkdir("eval_results")
-
-                                file_name = "-".join((query_set, clr_spc, distance_metric, hm)) + ".pkl"
-                                file = open(os.path.join(cur_path, "eval_results", file_name), "wb")
-                                pickle.dump(preds, file)
                             writer.writerow([query_set, clr_spc, distance_metric, hm, k, mAP])
 
             print("--- %s seconds ---" % (time.time() - start_time), '\n')
 
 
+# Test query sets for each combination of color spaces,
+# distance metrics and histogram methods.
 def test_all(bins, pckl, cur_path, level):
+    """
+    Parameters
+    ----------
+    bins = int
+           Size of the histogram bins
+
+    pckl = boolean, optional
+           Whether to write results to a pickle file.
+
+    cur_path = string
+               Current working path
+
+    level =  int
+             Image split level
+
+    """    
 
     print("### Getting Images ###")
     museum_imgs = get_images_and_labels.get_museum_dataset(cur_path)
@@ -170,27 +305,19 @@ def test_all(bins, pckl, cur_path, level):
 
         print(query_set)
         start_time = time.time()
-        query_set_imgs = utils.get_images_and_labels.get_query_set_images(cur_path, query_set)
+        query_set_imgs = get_images_and_labels.get_query_set_images(cur_path, query_set)
         if query_set == "qst2_w2":
-            query_set_imgs = utils.remove_background(query_set_imgs, cur_path, query_set, False)
+            query_set_imgs = remove_background(query_set_imgs, cur_path, query_set, False)
 
-        for clr_spc in utils.color_spaces().keys():
+        for clr_spc in color_spaces().keys():
 
             for distance_metric in distance_metrics.keys():
 
                 for hm in ["1d", "3d"]:
 
                     for k in [1,5,10]:
-                        preds = test_query_set(query_set_imgs, museum_imgs, cur_path, level, query_set, 
-                                               hm, clr_spc, distance_metric, k, hist_size=bins)
-                        if pckl:
-
-                            if not os.path.exists(os.path.join(cur_path, "test_results")):
-                                os.mkdir("test_results")
-
-                            file_name = "-".join((query_set, clr_spc, distance_metric, hm)) + ".pkl"
-                            file = open(os.path.join(cur_path, "test_results", file_name), "wb")
-                            pickle.dump(preds, file)
+                        _ = test_query_set(query_set_imgs, museum_imgs, cur_path, level, query_set, 
+                                           hm, clr_spc, distance_metric, k, hist_size=bins, pckl=pckl)
 
         print("--- %s seconds ---" % (time.time() - start_time), '\n')
 
