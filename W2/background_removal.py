@@ -111,12 +111,14 @@ def straighten_mask(mask:np.ndarray, bw_min_ratio:float=0.6) -> Tuple[np.ndarray
             to_cut = np.argsort(borders)[0]
             if to_cut == 0:
                 x += 1
+                h -= 1
             elif to_cut == 1 :
                 w -= 1
             elif to_cut == 2:
                 h -=1
             elif to_cut == 3:
-                y += 1    
+                y += 1
+                w -= 1    
         else:
             can_improve = False
 
@@ -142,7 +144,8 @@ def get_biggest_connected_component(mask:np.ndarray, check_bg:bool=True) -> np.n
     num_labels, im_labels = cv2.connectedComponents(mask)
 
     max_area, best_label = 0 , -1
-    for label in range(num_labels):
+
+    for label in range(min(num_labels,1000)):
     #If the background area is larger than the picture, we don't want the background
         #if im_labels[0,0] == label and check_tl :
             #continue
@@ -214,8 +217,12 @@ def extract_paintings_from_image(image:np.ndarray) -> List[np.ndarray]:
     mask = background_removal(image=image)
     enhanced_mask, bboxes = enhance_mask_multi(mask=mask)
 
+    painting_boxes = []
+
     for bbox in bboxes:
         y,x,w,h = bbox
+        painting_boxes.append([x,y,w,h])
         paintings.append(image[y:y+h, x:x+w,:])
 
-    return paintings
+
+    return paintings, painting_boxes
