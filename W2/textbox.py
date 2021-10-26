@@ -16,7 +16,7 @@ def blackhat(img:np.ndarray, size=(25,25)) -> np.ndarray:
     THRESHOLD = 150
     img_orig[(img_orig[:,:,0] < THRESHOLD) | (img_orig[:,:,1] < THRESHOLD) | (img_orig[:,:,2] < THRESHOLD)] = (0,0,0)
     
-    img_orig = closing(img_orig, size=(10, int(img_orig.shape[1]/6) ))
+    img_orig = closing(img_orig, kernel_size=(10, int(img_orig.shape[1]/6) ))
     
     return (cv2.cvtColor(img_orig, cv2.COLOR_BGR2GRAY) != 0)
 
@@ -29,7 +29,7 @@ def tophat(img:np.ndarray, size=(25,25)) -> np.ndarray :
     THRESHOLD = 150
     img_orig[(img_orig[:,:,0] < THRESHOLD) | (img_orig[:,:,1] < THRESHOLD) | (img_orig[:,:,2] < THRESHOLD)] = (0,0,0)
     
-    img_orig = closing(img_orig, size=(10, int(img_orig.shape[1]/6) ) )
+    img_orig = closing(img_orig, kernel_size=(10, int(img_orig.shape[1]/6) ) )
 
     return (cv2.cvtColor(img_orig, cv2.COLOR_BGR2GRAY) != 0)
 

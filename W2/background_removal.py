@@ -47,7 +47,7 @@ def background_removal(image, limit=10):
                         mask[i,j] = 0
                 else:
                         break
-    mask = utils.closing(utils.opening(mask, size=(25,25)), size=(25,25))
+    mask = utils.closing(utils.opening(mask, kernel_size=(25,25)), kernel_size=(25,25))
     return mask
 
 def enhance_mask(mask:np.ndarray, bw_min_ratio:float=0.6) -> Tuple[np.ndarray, Tuple[int,int,int,int]]:
@@ -148,8 +148,6 @@ def get_biggest_connected_component(mask:np.ndarray, check_bg:bool=True) -> np.n
 
     for label in range(num_labels):
     #If the background area is larger than the picture, we don't want the background
-        #if im_labels[0,0] == label and check_bg :
-            #continue
         if np.max(mask[im_labels == label]) == 0  and check_bg:
             continue
 
