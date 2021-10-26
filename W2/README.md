@@ -9,7 +9,7 @@ Also this week's query images have text in them and query set 2 images may have 
 ```
 
 python main.py [-all all] [-p pickle] [-m mode] [-em eval_masks] [-r dataset_path] [-q query_set] [-cs color_space] 
-               [hm hist_method] [-dm distance_method] [-b bins] [-k k]
+               [hm hist_method] [-dm distance_method] [-b bins] [-k k] [-l level]
                     
 
 Arguments: 
@@ -69,5 +69,12 @@ Arguments: Any integer value
 
 k, -k: How many of the top results for mean AP we are going to get. 
 Default: 10
+Arguments: Any integer value  
+
+
+level, -l:   This argument determines the level of image split. Image is split into 2^(level-1) parts in the x and y axes. 
+             In total, we have 2*(2^(level-1)) same sized patches of an image. Each patch's histogram is calculated 
+             seperately.
+Default: 4
 Arguments: Any integer value  
 ```
