@@ -1,4 +1,6 @@
-## Week1
+## Week 1
+
+This week, we are using 1D and 3D histograms for image retrieval. Images that have background are processed to remove their backgrounds.
 
 <b> Usage: </b> <br>
 
