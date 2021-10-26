@@ -45,7 +45,7 @@ def get_textbox_score(mask:np.ndarray) -> float:
     
     # some upper and lower thresholding depending on its size and the painting size.
     if w < 10 or h < 10 or h > w:
-        return 0
+        return 0 
     if h >= mask.shape[0]/4 or w >= mask.shape[1]*0.8:
         return 0
 
@@ -59,7 +59,7 @@ def get_textbox(mask):
     """
 
     """
-    mask_copy = mask.copy()
+    mask_copy = mask.copy().astype(np.uint8)
     MIN_SCORE = 0.2
     
     best_score = 0    
@@ -68,7 +68,7 @@ def get_textbox(mask):
     while not found:
         component = bg.get_biggest_connected_component(mask=mask_copy, check_bg=True)
         score = get_textbox_score(component) 
-        
+
         if np.sum(component) < 1 :
             return 0, None
 
@@ -84,8 +84,8 @@ def get_textbox(mask):
     #We add a margin arround the text
     MARGIN = 0.02
 
-    tlx,tly, brx,bry = (x - int(MARGIN*mask.shape[1]),y - int(MARGIN*mask.shape[0]) ,
-                        x+w + int(MARGIN*mask.shape[1]) , y+h + int(MARGIN*mask.shape[0]) )
+    tlx,tly, brx,bry = (x - int(MARGIN*mask.shape[1]),y - int(MARGIN*mask.shape[1]) ,
+                        x+w + int(MARGIN*mask.shape[1]) , y+h + int(MARGIN*mask.shape[1]) )
 
     return best_score, (max(0,tlx), max(0,tly), min(brx,mask.shape[1]-1), min(bry,mask.shape[0]-1))
 

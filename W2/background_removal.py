@@ -1,6 +1,7 @@
 from typing import List, Tuple
 import cv2
 import numpy as np
+import utils
 
 
 def background_removal(image, limit=10):
@@ -46,7 +47,7 @@ def background_removal(image, limit=10):
                         mask[i,j] = 0
                 else:
                         break
-
+    mask = utils.closing(utils.opening(mask, size=(25,25)), size=(25,25))
     return mask
 
 def enhance_mask(mask:np.ndarray, bw_min_ratio:float=0.6) -> Tuple[np.ndarray, Tuple[int,int,int,int]]:
@@ -145,9 +146,9 @@ def get_biggest_connected_component(mask:np.ndarray, check_bg:bool=True) -> np.n
 
     max_area, best_label = 0 , -1
 
-    for label in range(min(num_labels,1000)):
+    for label in range(num_labels):
     #If the background area is larger than the picture, we don't want the background
-        #if im_labels[0,0] == label and check_tl :
+        #if im_labels[0,0] == label and check_bg :
             #continue
         if np.max(mask[im_labels == label]) == 0  and check_bg:
             continue
@@ -179,11 +180,10 @@ def enhance_mask_multi(mask:np.ndarray, bw_min_ratio:float=0.6) :
     MAX_PAINTINGS = 2
     
     #Percentage of the image occupied by the connected component to be considered a painting
-    OCCUPANCY_THTRRESHOLD = 0.10
+    OCCUPANCY_THTRRESHOLD = 0.05
 
     bboxes = []
     final_mask = np.zeros_like(mask)
-
     for i in range(MAX_PAINTINGS):
         biggest_component = get_biggest_connected_component(mask)
         
