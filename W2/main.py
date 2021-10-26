@@ -1,8 +1,4 @@
-import cv2
-import numpy as np
 import os
-from distances import find_distance, distance_metrics
-from histogram import pyramid_rep_hist
 import get_images_and_labels
 import evaluation as eval
 import argparse
@@ -10,6 +6,7 @@ import sys
 import utils
 
 
+# Parser to get arguments from command line
 def parse_args(args=sys.argv[1:]):
     parser = argparse.ArgumentParser()
 
@@ -69,46 +66,43 @@ def parse_args(args=sys.argv[1:]):
     return args
 
 
-# Evaluate the whole query set with the given conditions
-
 if __name__ == '__main__':
 
     args = parse_args()
     print("Passed arguments are:", args)
 
-    # You should change the path according to your computer
-    # We can take the path as a command line argument
     cur_path = args.dataset_paths
 
-
-    # Get all 3 image datasets at the start
-
+    # If -all command is given evaluates or tests all sets of that mode
+    # for every possible combination of color space, distance metrics
+    # and hist_methods.
     if args.all:
     
         if args.mode == "eval":
             eval.evaluate_all(args.bins, args.pickle, cur_path, args.level, args.eval_masks)
-
         else:
             eval.test_all(args.bins, args.pickle, cur_path, args.level)
 
+    # If -all command is not given evaluate or test the given query set.
     else:
 
         print("### Getting Images ###")
         museum_imgs = get_images_and_labels.get_museum_dataset(cur_path)
         query_set_imgs = get_images_and_labels.get_query_set_images(cur_path, args.query_set)
 
-        if args.query_set in ["qsd2_w1", "qsd2_w2"]:
+        # Don't evaluate mask if query set is a test set.
+        if args.query_set == "qsd2_w2":
             query_set_imgs = utils.remove_background(query_set_imgs, cur_path, args.query_set, args.eval_masks)  
 
         elif args.query_set == "qst2_w2":
             query_set_imgs = utils.remove_background(query_set_imgs, cur_path, args.query_set, False) 
 
-        if args.mode == "eval":
-            eval.evaluate_query_set(query_set_imgs, museum_imgs, args.eval_masks, args.query_set, args.hist_method, 
-                                    args.color_space, args.distance_metric, args.k, args.bins, args.pickle)
 
+        if args.mode == "eval":
+            eval.evaluate_query_set(query_set_imgs, museum_imgs, cur_path, args.level, args.query_set, args.hist_method, 
+                                    args.color_space, args.distance_metric, args.k, args.bins, args.pickle)
         else:
-            eval.test_query_set(query_set_imgs, museum_imgs, args.eval_masks, args.query_set, args.hist_method, 
+            eval.test_query_set(query_set_imgs, museum_imgs, cur_path, args.level, args.query_set, args.hist_method, 
                                 args.color_space, args.distance_metric, args.k, args.bins, args.pickle)
 
 

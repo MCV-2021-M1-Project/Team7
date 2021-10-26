@@ -36,12 +36,20 @@ def get_query_set_labels(file_path, dataset_name="qsd1_w2"):
     return pickle.load(lbls)
 
 
-def get_qsd2_masks(file_path, query_set):
+def get_text_boxes(file_path, dataset_name):
+    """
+    Get the real text box coordinates
+    """
+    lbls = open(os.path.join(file_path, dataset_name, "text_boxes.pkl"), 'rb')
+    return pickle.load(lbls)  
+
+
+def get_qsd2_masks(file_path, dataset_name):
     """
     Get the ground truth for masks in query set 2
     """
 
-    dataset_folder = os.path.join(file_path, query_set)  
+    dataset_folder = os.path.join(file_path, dataset_name)  
     return [cv2.cvtColor(cv2.imread(os.path.join(dataset_folder, img)), cv2.COLOR_BGR2GRAY).astype("bool")\
             for img in os.listdir(dataset_folder) if img.endswith(".png")]
 
