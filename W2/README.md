@@ -1,4 +1,8 @@
-## Week2
+## Week 2
+
+Block based histograms are introduced this week. Images are split into equal parts and each part's histogram is calculated seperately, and as a final step all parts are concatenated into a 1D array. 
+
+Also this week's query images have text in them and query set 2 images may have more than 1 painting in a single image. We created morphological operators to detect text boxes and chaned our background removal code to detect more than 1 painting in an image.
 
 <b> Usage: </b> <br>
 
