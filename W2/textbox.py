@@ -3,6 +3,7 @@ import cv2
 import numpy as np
 from utils import opening, closing
 import background_removal as bg
+import matplotlib.pyplot as plt
 
 
 def blackhat(img:np.ndarray, size=(25,25)) -> np.ndarray:
@@ -82,10 +83,10 @@ def get_textbox(mask):
     x,y,w,h = cv2.boundingRect(mask.astype(np.uint8))
     
     #We add a margin arround the text
-    MARGIN = 0.02
+    MARGIN = 0.5
 
-    tlx,tly, brx,bry = (x - int(MARGIN*mask.shape[1]),y - int(MARGIN*mask.shape[1]) ,
-                        x+w + int(MARGIN*mask.shape[1]) , y+h + int(MARGIN*mask.shape[1]) )
+    tlx,tly, brx,bry = (x - int(MARGIN*h),y - int(MARGIN*h) ,
+                        x+w + int(MARGIN*h) , y+h + int(MARGIN*h) )
 
     return best_score, (max(0,tlx), max(0,tly), min(brx,mask.shape[1]-1), min(bry,mask.shape[0]-1))
 
@@ -100,48 +101,62 @@ def extract_textbox(image:np.ndarray):
     else:
         return score_dark, bbox_dark
 
-
-def get_iou(bb1, bb2):
+def extract_textbox_hsv(image):
     """
-    Calculate the Intersection over Union (IoU) of two bounding boxes.
-
-    Parameters
-    ----------
-    bb1 : Tuple
-        (tlx, tly, brx, bry)
-    bb2 : Tuple
-        K(tlx, tly, brx, bry)
-    Returns
-    -------
-    float
-        in [0, 1]
+    
     """
-    assert bb1[0] < bb1[2]
-    assert bb1[1] < bb1[3]
-    assert bb2[0] < bb2[2]
-    assert bb2[1] < bb2[3]
+    abs_v = np.absolute(image - np.amax(image) / 2)
 
-    # determine the coordinates of the intersection rectangle
-    x_left = max(bb1[0], bb2[0])
-    y_top = max(bb1[1], bb2[1])
-    x_right = min(bb1[2], bb2[2])
-    y_bottom = min(bb1[3], bb2[3])
+    blackhat = cv2.morphologyEx(abs_v, cv2.MORPH_BLACKHAT, np.ones((3,3), np.uint8))
+    blackhat = blackhat / np.max(blackhat)
+    
+    mask = np.zeros_like(image)
+    mask[blackhat > 0.4] = 1
 
-    if x_right < x_left or y_bottom < y_top:
-        return 0.0
+    #Morphological filters
+    mask = closing(mask, (2,10)) ##Fill letter
+    mask = opening(mask, (4,4))
+    mask = closing(mask, (1, int(image.shape[1]/6)))
 
-    # The intersection of two axis-aligned bounding boxes is always an
-    # axis-aligned bounding box
-    intersection_area = (x_right - x_left) * (y_bottom - y_top)
+    #Get the biggest connected component
+    component  = bg.get_biggest_connected_component(mask)
 
-    # compute the area of both AABBs
-    bb1_area = (bb1[2] - bb1[0]) * (bb1[3] - bb1[1])
-    bb2_area = (bb2[2] - bb2[0]) * (bb2[3] - bb2[1])
+    #Get the component bounding box
+    x,y,w,h = cv2.boundingRect(component.astype(np.uint8))
+    w,h = min(w, mask.shape[1]-x-1), min(h, mask.shape[0]-y-1) 
+    
+    box = np.zeros((image.shape[0], image.shape[1] + 202))
+    mask = np.zeros_like(box)
+    
+    box[y:(y+h), 116:box.shape[1] - 116] = blackhat[y:(y+h), 15:image.shape[1]-15]
+    box = box / np.amax(box)
+    mask[box > 0.46] = 1
 
-    # compute the intersection over union by taking the intersection
-    # area and dividing it by the sum of prediction + ground-truth
-    # areas - the interesection area
-    iou = intersection_area / float(bb1_area + bb2_area - intersection_area)
-    assert iou >= 0.0
-    assert iou <= 1.0
-    return iou
+    #Morphological filters
+    mask = closing(mask, kernel_size=(9,15))
+    mask = opening(mask, kernel_size=(3,3))
+    mask = closing(mask, kernel_size=(1, int(image.shape[1]/4)))
+    mask = opening(mask, kernel_size=(1,2))
+
+    #Get the biggest connected component
+    component  = bg.get_biggest_connected_component(mask.astype(np.uint8))
+
+    if np.max(component) == 0:
+        return[0,0,0,0]
+    else:
+        # Find component's rectangle's i coordinates
+        coord_i = np.where(np.amax(component[:, 101:-101], axis=1))
+        coord_j = np.where(np.amax(component[:, 101:-101], axis=0))
+        top = coord_i[0][0]
+        bottom = coord_i[0][-1]
+        left = coord_j[0][0]
+        right = coord_j[0][-1]
+
+        # Expand coordinates and take original image's values in that zone
+        inter = int((bottom - top) * 0.5)
+        top = top - inter if top - inter > 0 else 0
+        bottom = bottom + inter if bottom + inter < image.shape[0] else image.shape[0]
+        left = left - inter if left - inter > 0 else 0
+        right = right + inter if right + inter < image.shape[1] else image.shape[1]
+
+        return [left, top, right, bottom]
