@@ -96,35 +96,35 @@ def straighten_mask(mask:np.ndarray, bw_min_ratio:float=0.6) -> Tuple[np.ndarray
     cnt = contours[0]
     
     #Get the Bounding Box coordinates, check that it doesn't exceed array size
-    y,x,w,h = cv2.boundingRect(cnt)
-    w,h = min(w, mask.shape[1]-y-1), min(h, mask.shape[0]-x-1) 
+    x,y,w,h = cv2.boundingRect(cnt)
+    w,h = min(w, mask.shape[1]-x-1), min(h, mask.shape[0]-y-1) 
 
     can_improve = True
 
     #If most of the border isn't predicted to be from the picture, cut the border by 1 pixel. 
     while can_improve:
         #Top, right, bottom, left corners average binary value.
-        borders = [np.mean(mask[x,y:(y+w)]), np.mean(mask[x:(x+h),y+w]) , \
-                                    np.mean(mask[x+h,y:(y+w)]), np.mean(mask[x:(x+h),y+w]) ]
+        borders = [np.mean(mask[y,x:(x+w)]), np.mean(mask[y:(y+h),x+w]) , \
+                                    np.mean(mask[y+h,x:(x+w)]), np.mean(mask[y:(y+h),x]) ]
         #Check if at least one border is mostly black pixels
         if np.min(borders) < bw_min_ratio:
             #cut the "most black" border
             to_cut = np.argsort(borders)[0]
             if to_cut == 0:
-                x += 1
+                y += 1
                 h -= 1
             elif to_cut == 1 :
                 w -= 1
             elif to_cut == 2:
                 h -=1
             elif to_cut == 3:
-                y += 1
+                x += 1
                 w -= 1    
         else:
             can_improve = False
 
     straight_mask = np.zeros_like(mask).astype("bool")
-    straight_mask[x:(x+h),y:(y+w)] = True
+    straight_mask[y:(y+h),x:(x+w)] = True
     
     return straight_mask, (x,y,w,h)
 
@@ -148,8 +148,6 @@ def get_biggest_connected_component(mask:np.ndarray, check_bg:bool=True) -> np.n
 
     for label in range(num_labels):
     #If the background area is larger than the picture, we don't want the background
-        #if im_labels[0,0] == label and check_bg :
-            #continue
         if np.max(mask[im_labels == label]) == 0  and check_bg:
             continue
 
@@ -220,9 +218,9 @@ def extract_paintings_from_image(image:np.ndarray) -> List[np.ndarray]:
     painting_boxes = []
 
     for bbox in bboxes:
-        y,x,w,h = bbox
+        x,y,w,h = bbox
         painting_boxes.append([x,y,w,h])
         paintings.append(image[y:y+h, x:x+w,:])
 
 
-    return enhanced_mask, paintings, painting_boxes
+    return paintings, painting_boxes
