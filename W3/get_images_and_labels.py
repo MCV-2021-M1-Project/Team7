@@ -18,19 +18,19 @@ def get_museum_dataset(file_path):
     return [cv2.imread(os.path.join(dataset_folder, img)) for img in os.listdir(dataset_folder) if img.endswith(".jpg")]
 
 
-def get_query_set_images(file_path, dataset_name="qsd1_w2"):
+def get_query_set_images(file_path, dataset_name="qsd1_w3"):
     """
     Get the images in the query sets
-    Dataset name argument should be "qsd2_w1", "qsd1_w2" or "qsd2_w2"
+    Dataset name argument should be "qsd2_w1", "qsd1_w3" or "qsd2_w3"
     """
     dataset_folder = os.path.join(file_path, dataset_name)  
     return [cv2.imread(os.path.join(dataset_folder, img)) for img in os.listdir(dataset_folder) if img.endswith(".jpg")]
 
 
-def get_query_set_labels(file_path, dataset_name="qsd1_w2"):
+def get_query_set_labels(file_path, dataset_name="qsd1_w3"):
     """
     Get the ground truth for the museum dataset
-    Dataset name argument should be "qsd1_w2" or "qsd2_w2"
+    Dataset name argument should be "qsd1_w3" or "qsd2_w3"
     """
     lbls = open(os.path.join(file_path, dataset_name, "gt_corresps.pkl"), 'rb')
     return pickle.load(lbls)
@@ -60,17 +60,17 @@ if __name__ == "__main__":
     #Get Image Datasets
     print("### Getting Images ###")
     museum_imgs = get_museum_dataset(cur_path)
-    query_set1_imgs = get_query_set_images(cur_path, "qsd1_w2")
-    query_set2_imgs = get_query_set_images(cur_path, "qsd2_w2")
+    query_set1_imgs = get_query_set_images(cur_path, "qsd1_w3")
+    query_set2_imgs = get_query_set_images(cur_path, "qsd2_w3")
 
     #Get labels
     print("### Getting Labels ###")
-    query_set1_labels = get_query_set_labels(cur_path, "qsd1_w2")
-    query_set2_labels = get_query_set_labels(cur_path, "qsd2_w2")
+    query_set1_labels = get_query_set_labels(cur_path, "qsd1_w3")
+    query_set2_labels = get_query_set_labels(cur_path, "qsd2_w3")
     
     #Get Masks
     print("### Getting Masks ###")
-    query_set2_masks = get_qsd2_masks(cur_path, "qsd2_w2")
+    query_set2_masks = get_qsd2_masks(cur_path, "qsd2_w3")
 
     #Display examples
     print(f"Query Set 1 labels : {query_set1_labels}")

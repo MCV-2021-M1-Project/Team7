@@ -77,7 +77,7 @@ def mapk(actual, predicted, k=10):
 
 
 # Evaluate the whole query set with the given conditions
-def evaluate_query_set(query_set_imgs, museum_imgs, cur_path, level, query_set="qsd2_w2", hist_method="3d", clr_spc="RGB", 
+def evaluate_query_set(query_set_imgs, museum_imgs, cur_path, level, query_set="qsd1_w3", desc_method="3d", clr_spc="RGB", 
                        distance_metric="cosine", k=5, hist_size=16, pckl=True):
 
     """
@@ -124,8 +124,8 @@ def evaluate_query_set(query_set_imgs, museum_imgs, cur_path, level, query_set="
 
     """                        
 
-    museum_imgs_hists = get_histograms("BBDD", cur_path, museum_imgs, level, hist_method, clr_spc, hist_size) 
-    query_imgs_hists = get_histograms(query_set, cur_path, query_set_imgs, level, hist_method, clr_spc, hist_size)
+    museum_imgs_hists = get_descriptor("BBDD", cur_path, museum_imgs, level, desc_method=desc_method) 
+    query_imgs_hists = get_descriptor(query_set, cur_path, query_set_imgs, level, desc_method = desc_method)
 
     qs_labels = get_images_and_labels.get_query_set_labels(cur_path, query_set)
 
@@ -148,13 +148,13 @@ def evaluate_query_set(query_set_imgs, museum_imgs, cur_path, level, query_set="
 
     map = round(mapk(qs_labels, query_set_preds, k), 4)
     print("For Color Space:", clr_spc, "and Distance Metric:", distance_metric, \
-          "and Hist. Method:", hist_method, "and k:", k, "AP is: ", map)
+          "and Hist. Method:", desc_method, "and k:", k, "AP is: ", map)
 
     if pckl:
         if not os.path.exists(os.path.join(cur_path, "eval_results")):
             os.mkdir("eval_results")
 
-        file_name = "-".join((query_set, clr_spc, distance_metric, str(level), hist_method, str(hist_size))) + ".pkl"
+        file_name = "-".join((query_set, clr_spc, distance_metric, str(level), desc_method, str(hist_size))) + ".pkl"
         file = open(os.path.join(cur_path, "eval_results", file_name), "wb")
         pickle.dump(query_set_preds, file)
 

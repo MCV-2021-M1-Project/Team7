@@ -2,11 +2,13 @@ import cv2
 import numpy as np
 import os
 from distances import find_distance, distance_metrics
-from histogram import pyramid_rep_hist
+from descriptor import pyramid_rep_hist
+from typing import List, Tuple
 import pickle
 import background_removal as bg
 import evaluation as eval
 import get_images_and_labels
+
 
 
 def color_spaces():
@@ -25,7 +27,8 @@ def color_spaces():
     "RGB": cv2.COLOR_BGR2RGB,
     "HSV": cv2.COLOR_BGR2HSV,
     "YCRCB": cv2.COLOR_BGR2YCrCb,
-    "LAB": cv2.COLOR_BGR2LAB
+    "LAB": cv2.COLOR_BGR2LAB,
+    "GRAY": cv2.COLOR_BGR2GRAY
     }
 
 
@@ -130,6 +133,93 @@ def get_histograms(dataset_name, cur_path, imgs, level, hist_method, clr_spc, hi
                 for img in img_list:
                     imgs_cs.append(pyramid_rep_hist(cv2.cvtColor(img, color_spaces()[clr_spc]), 
                                                     clr_spc, level, hist_method, hist_size))
+                imgs_hists.append(imgs_cs)
+            
+        file = open(file_path, "wb")
+        pickle.dump(imgs_hists, file)   
+    
+    return imgs_hists
+
+# Fetches the histograms for the given dataset
+def get_descriptor(dataset_name:str, cur_path:str, imgs:List[np.ndarray], level:int=2, desc_method:str="3d", clr_spc:str="RGB", hist_size:int=16):
+    """
+    Parameters
+    ----------
+    dataset_name = string
+                   Name of the dataset which histograms are going to be calculated.
+
+    cur_path = string
+               Current working path
+
+    imgs = list of numpy array
+           List of images which histograms are going to be calculated.
+
+    level =  int
+             Image split level
+
+    desc_method = string
+                  Which descriptor is going to be used? 
+
+    clr_spc = string
+              What color space is going to be used?
+
+    hist_size = int
+                Size of the bins of histograms.
+
+    Returns 
+    ----------
+    imgs_hists: list of lists or a list with numpy arrays
+                If museum dataset, returns a list of numpy arrays with calculated histograms
+                else returns a list of lists with numpy arrays with calculated histograms.
+    """
+
+    print("Getting the descriptors for the ", dataset_name, " dataset")
+
+    if not os.path.exists(os.path.join(cur_path, "descriptors")):
+        os.mkdir("descriptors")
+
+    if desc_method in ["1d", "3d"]:
+        file_name =  "-".join(("Desc", dataset_name, desc_method, clr_spc, str(level), str(hist_size))) + ".pkl"
+    else:
+        file_name =  "-".join(("Desc", dataset_name, desc_method, str(level) )) + ".pkl"
+    file_path = os.path.join("descriptors", file_name)
+
+    # If the descriptors are already calculated and stored in a pickle file
+    # reads them from it
+    if os.path.exists(os.path.join(cur_path, file_path)):
+
+        file = open(os.path.join(cur_path, file_path), "rb")
+        imgs_hists = pickle.load(file)
+
+    # If the descriptro for the given dataset and color space isn't calculated before
+    # calculate and write it to a pickle file
+
+    else: 
+        # If museum dataset, don't return list of lists, just a list.
+        if dataset_name == "BBDD":
+            
+            if desc_method in ["1d", "3d"]:
+                imgs_cs = [cv2.cvtColor(img, color_spaces()[clr_spc]) \
+                        for img in imgs]
+            else: 
+                imgs_cs = imgs
+            imgs_hists = [pyramid_rep_hist(img, clr_spc, level, desc_method, hist_size) for img in imgs_cs]
+
+        else:    
+        # If a query dataset, return a list of lists.
+            imgs_hists = []
+
+            if not isinstance(imgs[0], list):
+                imgs = [[img] for img in imgs]
+
+            for img_list in imgs:
+                imgs_cs = []
+                for img in img_list:
+                    if desc_method in ["1d","3d"]:
+                        imgs_cs.append(pyramid_rep_hist(cv2.cvtColor(img, color_spaces()[clr_spc]), 
+                                                        clr_spc, level, desc_method, hist_size))
+                    else:
+                        imgs_cs.append(pyramid_rep_hist(img, clr_spc, level, desc_method, hist_size))
                 imgs_hists.append(imgs_cs)
             
         file = open(file_path, "wb")
@@ -319,3 +409,6 @@ def get_iou(bb1, bb2):
     assert iou >= 0.0
     assert iou <= 1.0
     return iou
+
+def compute_zig_zag(array:np.ndarray):
+    return np.concatenate([np.diagonal(array[::-1,:], k)[::(2*(k % 2)-1)] for k in range(1-array.shape[0], array.shape[0])])
