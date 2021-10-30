@@ -12,5 +12,9 @@ W2/qsd1_w2/
 W2/qsd2_w2/
 W2/qst1_w2/
 W2/qst2_w2/
-W2/Notebook.ipynb
 W2/saved_images/
+
+
+*.pkl
+*.ipynb
+**/saved_images

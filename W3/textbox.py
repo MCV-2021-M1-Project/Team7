@@ -6,11 +6,21 @@ import background_removal as bg
 import matplotlib.pyplot as plt
 
 
-def blackhat(img:np.ndarray, size=(25,25)) -> np.ndarray:
+def blackhat(img:np.ndarray, kernel_size:Tuple[int, int]=(25,25)) -> np.ndarray:
     """
-
+    Computes the text location mask using balckhat morphological operation. Should work well on dark text over bright background.
+    Parameters
+    ----------
+    image : numpy array
+            An array containing the image you want to get the textbox mask.
+    kernel_size : Tuple(int,int)
+            Shape of the kernel used for blackhat morphological operation.
+    Returns
+    -------
+    mask : numpy array
+            The mask corresponding to the believed position of the textbox on the image.
     """
-    kernel = np.ones(size, np.uint8)
+    kernel = np.ones(kernel_size, np.uint8)
 
     img_orig = cv2.morphologyEx(img, cv2.MORPH_BLACKHAT, kernel)
     
@@ -22,8 +32,21 @@ def blackhat(img:np.ndarray, size=(25,25)) -> np.ndarray:
     return (cv2.cvtColor(img_orig, cv2.COLOR_BGR2GRAY) != 0)
 
 
-def tophat(img:np.ndarray, size=(25,25)) -> np.ndarray :
-    kernel = np.ones(size, np.uint8) 
+def tophat(img:np.ndarray, kernel_size:Tuple[int,int]=(25,25)) -> np.ndarray :
+    """
+    Computes the text location mask using tophat morphological operation. Should work well on bright text over dark background.
+    Parameters
+    ----------
+    image : numpy array
+            An array containing the image you want to get the textbox mask.
+    kernel_size : Tuple(int,int)
+            Shape of the kernel used for blackhat morphological operation.
+    Returns
+    -------
+    mask : numpy array
+            The mask corresponding to the believed position of the textbox on the image.
+    """
+    kernel = np.ones(kernel_size, np.uint8) 
 
     img_orig = cv2.morphologyEx(img, cv2.MORPH_TOPHAT, kernel)
     
@@ -91,8 +114,17 @@ def get_textbox(mask):
     return best_score, (max(0,tlx), max(0,tly), min(brx,mask.shape[1]-1), min(bry,mask.shape[0]-1))
 
 
-def extract_textbox(image:np.ndarray):
+def extract_textbox(image:np.ndarray) -> Tuple[float, Tuple[int,int,int,int]]:
     """
+    Extract textbox of an image using the tophat/blackhat methods.
+    Parameters
+    ----------
+    image : numpy array
+            An array containing the image you want to get the textbox mask.
+    Returns
+    -------
+    (tlx,tly,brx,bry) : Tuple(int,int,int,int)
+            Bounding box corners location of the expected textbox location.
     """
     score_bright, bbox_bright = get_textbox(tophat(image))
     score_dark, bbox_dark = get_textbox(blackhat(image))
@@ -101,22 +133,37 @@ def extract_textbox(image:np.ndarray):
     else:
         return score_dark, bbox_dark
 
-def extract_textbox_hsv(image):
+def extract_textbox_hsv(image:np.ndarray):
     """
+    Extract textbox of an image using the HSV color space.
+    Parameters
+    ----------
+    image : numpy array
+            An array containing the image you want to get the textbox mask.
+    Returns
+    -------
+    (tlx,tly,brx,bry) : Tuple(int,int,int,int)
+            Bounding box corners location of the expected textbox location.
+    """
+    #Connvert image to HSV and only keep the V channel.
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    image = image[:,:,2]
     
-    """
+    #Compute image "absolute value" so that bright-over-dark = dark-over-bright = grey
     abs_v = np.absolute(image - np.amax(image) / 2)
 
+    #Compute blackhat morphological opertation on the obtained image 
     blackhat = cv2.morphologyEx(abs_v, cv2.MORPH_BLACKHAT, np.ones((3,3), np.uint8))
     blackhat = blackhat / np.max(blackhat)
     
+    #Create a mask of the believed position of the textbox
     mask = np.zeros_like(image)
-    mask[blackhat > 0.4] = 1
+    mask[blackhat > 0.45] = 1
 
-    #Morphological filters
-    mask = closing(mask, (2,10)) ##Fill letter
+    #Morphological filters to enhance mask quality, remove artifacts
+    mask = closing(mask, (2,10)) #Fill letters
     mask = opening(mask, (4,4))
-    mask = closing(mask, (1, int(image.shape[1]/6)))
+    mask = closing(mask, (1, int(image.shape[1]/6))) #Fill the gap between letters
 
     #Get the biggest connected component
     component  = bg.get_biggest_connected_component(mask)
@@ -132,7 +179,7 @@ def extract_textbox_hsv(image):
     box = box / np.amax(box)
     mask[box > 0.46] = 1
 
-    #Morphological filters
+    #Morphological filters to enhance mask quality, remove artifacts
     mask = closing(mask, kernel_size=(9,15))
     mask = opening(mask, kernel_size=(3,3))
     mask = closing(mask, kernel_size=(1, int(image.shape[1]/4)))
@@ -142,9 +189,9 @@ def extract_textbox_hsv(image):
     component  = bg.get_biggest_connected_component(mask.astype(np.uint8))
 
     if np.max(component) == 0:
-        return[0,0,0,0]
+        return (0,0,0,0)
     else:
-        # Find component's rectangle's i coordinates
+        # Find component's rectangle's coordinates
         coord_i = np.where(np.amax(component[:, 101:-101], axis=1))
         coord_j = np.where(np.amax(component[:, 101:-101], axis=0))
         top = coord_i[0][0]
@@ -154,9 +201,9 @@ def extract_textbox_hsv(image):
 
         # Expand coordinates and take original image's values in that zone
         inter = int((bottom - top) * 0.5)
-        top = top - inter if top - inter > 0 else 0
-        bottom = bottom + inter if bottom + inter < image.shape[0] else image.shape[0]
-        left = left - inter if left - inter > 0 else 0
-        right = right + inter if right + inter < image.shape[1] else image.shape[1]
+        tlx = max(left - inter,0)
+        tly = max(top - inter,0)
+        bry = min(bottom + inter, image.shape[0] - 1)
+        brx = min(right + inter, image.shape[1] - 1)
 
-        return [left, top, right, bottom]
+        return (tlx, tly, brx, bry)
