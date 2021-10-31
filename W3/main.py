@@ -3,7 +3,7 @@ import get_images_and_labels
 import evaluation as eval
 import argparse
 import sys
-import utils
+from descriptor import denoise_image
 
 
 # Parser to get arguments from command line
@@ -15,12 +15,28 @@ def parse_args(args=sys.argv[1:]):
         help = "See results for all possible combinations")
 
     parser.add_argument(
+        "-adc", "--all_desc_combs", action="store_true",
+        help = "See results for all possible descriptor combinations")
+
+    parser.add_argument(
         "-p", "--pickle", action="store_true", default=True,
         help = "Generate pickle file with results")
 
     parser.add_argument(
         "-m", "--mode", default="eval",
         help = "Choose between evaluation and test modes: eval, test")
+
+    parser.add_argument(
+        "-txt", "--text", action="store_true", default=True,
+        help = "Use text based descriptors")
+
+    parser.add_argument(
+        "-tu", "--texture", action="store_true",
+        help = "Use texture based descriptors")
+
+    parser.add_argument(
+        "-clr", "--color", action="store_true", 
+        help = "Use color based descriptors")
 
     parser.add_argument(
         "-em", "--eval_masks", action="store_true", default=True,
@@ -50,8 +66,18 @@ def parse_args(args=sys.argv[1:]):
         help = "Histogram calculation method: 1d, 3d")
 
     parser.add_argument(
-        "-dm", "--distance_metric", default="hellinger",
-        help = "Similarity measure to compare images: \
+        "-cdm", "--color_distance_metric", default="hellinger",
+        help = "Similarity measure for color based histograms to compare images: \
+                cosine, manhattan, euclidean, intersect, kl_div, hellinger, chisqr, correlation")
+
+    parser.add_argument(
+        "-tdm", "--text_distance_metric", default="jaccard",
+        help = "Similarity measure to compare texts: \
+                cosine_text, jaccard, hamming, levenshtein")
+
+    parser.add_argument(
+        "-tudm", "--texture_distance_metric", default="jaccard",
+        help = "Similarity measure for texture base histograms to compare images: \
                 cosine, manhattan, euclidean, intersect, kl_div, hellinger, chisqr, correlation")
 
     parser.add_argument(
@@ -73,15 +99,22 @@ if __name__ == '__main__':
 
     cur_path = args.dataset_paths
 
+    desc_methods = []
+    if args.text:
+        desc_methods.append("text")
+    if args.texture:
+        desc_methods.append("texture")
+    if args.color:
+        desc_methods.append("color")
+
     # If -all command is given evaluates or tests all sets of that mode
     # for every possible combination of color space, distance metrics
-    # and hist_methods.
+    # and desc_methods.
     if args.all:
-    
-        if args.mode == "eval":
-            eval.evaluate_all(args.bins, args.pickle, cur_path, args.level, args.eval_masks)
-        else:
-            eval.test_all(args.bins, args.pickle, cur_path, args.level)
+        eval.evaluate_all(args.bins, args.pickle, cur_path, args.level, args.eval_masks, args.mode)
+
+    elif args.all_desc_combs:
+        eval.evaluate_combs_all(args.pickle, cur_path, args.eval_masks, args.mode)
 
     # If -all command is not given evaluate or test the given query set.
     else:
@@ -91,18 +124,20 @@ if __name__ == '__main__':
         query_set_imgs = get_images_and_labels.get_query_set_images(cur_path, args.query_set)
 
         # Don't evaluate mask if query set is a test set.
-        if args.query_set == "qsd2_w2":
-            query_set_imgs = utils.remove_background(query_set_imgs, cur_path, args.query_set, args.eval_masks)  
+        if args.query_set[3] == "2":
 
-        elif args.query_set == "qst2_w2":
-            query_set_imgs = utils.remove_background(query_set_imgs, cur_path, args.query_set, False) 
+            if args.mode == "eval":
+                query_set_imgs = eval.remove_background_and_eval(query_set_imgs, cur_path, args.query_set, args.eval_masks)  
+            else:
+                query_set_imgs = eval.remove_background_and_eval(query_set_imgs, cur_path, args.query_set, False) 
+
+        if args.query_set[-1] == "3":
+            
+            query_set_imgs = [denoise_image(img) for img in query_set_imgs]
 
 
-        if args.mode == "eval":
-            eval.evaluate_query_set(query_set_imgs, museum_imgs, cur_path, args.level, args.query_set, args.hist_method, 
-                                    args.color_space, args.distance_metric, args.k, args.bins, args.pickle)
-        else:
-            eval.test_query_set(query_set_imgs, museum_imgs, cur_path, args.level, args.query_set, args.hist_method, 
-                                args.color_space, args.distance_metric, args.k, args.bins, args.pickle)
+        eval.evaluate_query_set(query_set_imgs, museum_imgs, cur_path, args.level, desc_methods, args.mode, args.query_set,  
+                                args.color_space, args.color_distance_metric, args.text_distance_metric, args.texture_distance_metric,
+                                args.k, args.bins, args.pickle)
 
 

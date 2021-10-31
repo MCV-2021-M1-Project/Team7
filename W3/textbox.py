@@ -1,9 +1,12 @@
-from typing import List, Tuple
+from typing import Tuple
 import cv2
 import numpy as np
-from utils import opening, closing
 import background_removal as bg
-import matplotlib.pyplot as plt
+from utils import opening, closing
+import re
+
+import pytesseract as pt
+pt.pytesseract.tesseract_cmd = r'D:\Uygulamalar\Tesseract\tesseract.exe'
 
 
 def blackhat(img:np.ndarray, kernel_size:Tuple[int, int]=(25,25)) -> np.ndarray:
@@ -27,7 +30,7 @@ def blackhat(img:np.ndarray, kernel_size:Tuple[int, int]=(25,25)) -> np.ndarray:
     THRESHOLD = 150
     img_orig[(img_orig[:,:,0] < THRESHOLD) | (img_orig[:,:,1] < THRESHOLD) | (img_orig[:,:,2] < THRESHOLD)] = (0,0,0)
     
-    img_orig = closing(img_orig, kernel_size=(10, int(img_orig.shape[1]/6) ))
+    img_orig = bg.closing(img_orig, kernel_size=(10, int(img_orig.shape[1]/6) ))
     
     return (cv2.cvtColor(img_orig, cv2.COLOR_BGR2GRAY) != 0)
 
@@ -53,14 +56,13 @@ def tophat(img:np.ndarray, kernel_size:Tuple[int,int]=(25,25)) -> np.ndarray :
     THRESHOLD = 150
     img_orig[(img_orig[:,:,0] < THRESHOLD) | (img_orig[:,:,1] < THRESHOLD) | (img_orig[:,:,2] < THRESHOLD)] = (0,0,0)
     
-    img_orig = closing(img_orig, kernel_size=(10, int(img_orig.shape[1]/6) ) )
+    img_orig = bg.closing(img_orig, kernel_size=(10, int(img_orig.shape[1]/6) ) )
 
     return (cv2.cvtColor(img_orig, cv2.COLOR_BGR2GRAY) != 0)
 
 
 def get_textbox_score(mask:np.ndarray) -> float:
     """
-
     """
     mask = mask.copy()
     
@@ -81,7 +83,6 @@ def get_textbox_score(mask:np.ndarray) -> float:
 
 def get_textbox(mask):
     """
-
     """
     mask_copy = mask.copy().astype(np.uint8)
     MIN_SCORE = 0.2
@@ -180,10 +181,10 @@ def extract_textbox_hsv(image:np.ndarray):
     mask[box > 0.46] = 1
 
     #Morphological filters to enhance mask quality, remove artifacts
-    mask = closing(mask, kernel_size=(9,15))
-    mask = opening(mask, kernel_size=(3,3))
-    mask = closing(mask, kernel_size=(1, int(image.shape[1]/4)))
-    mask = opening(mask, kernel_size=(1,2))
+    mask = bg.closing(mask, kernel_size=(9,15))
+    mask = bg.opening(mask, kernel_size=(3,3))
+    mask = bg.closing(mask, kernel_size=(1, int(image.shape[1]/4)))
+    mask = bg.opening(mask, kernel_size=(1,2))
 
     #Get the biggest connected component
     component  = bg.get_biggest_connected_component(mask.astype(np.uint8))
@@ -207,3 +208,21 @@ def extract_textbox_hsv(image:np.ndarray):
         brx = min(right + inter, image.shape[1] - 1)
 
         return (tlx, tly, brx, bry)
+
+
+def extract_text(img):
+
+    bbox = extract_textbox_hsv(img)
+    if bbox == (0, 0, 0, 0):
+        text = ""
+
+    else:
+        text = pt.image_to_string(img[bbox[1]:bbox[3], bbox[0]:bbox[2]]).strip()
+        text = " ".join(re.findall("[a-zA-Z]+", text))
+
+    return bbox, text
+
+
+
+
+

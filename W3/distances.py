@@ -1,5 +1,7 @@
 import cv2
 from scipy import spatial
+import textdistance as td
+
 
 """
 Different distance measures for comparing the similarity of histograms
@@ -67,7 +69,7 @@ def chisqr(u, v):
     return cv2.compareHist(u, v, cv2.HISTCMP_CHISQR)
 
 
-distance_metrics = {
+color_distance_metrics = {
 
     "cosine": cosine,
     "manhattan": manhattan,
@@ -81,7 +83,7 @@ distance_metrics = {
     }
 
 
-def find_distance(u, v, method="cosine"):
+def find_color_distance(u, v, method="cosine"):
     """
 
     Calculate distance between the vectors with the chosen method
@@ -99,4 +101,32 @@ def find_distance(u, v, method="cosine"):
     corr, \n
     chisqr
     """
-    return distance_metrics[method](u, v)
+    return color_distance_metrics[method](u, v)
+
+
+def hamming(txt1, txt2):
+    return td.hamming.normalized_distance(txt1, txt2)
+
+
+def cosine_text(txt1, txt2):
+    return td.cosine.normalized_distance(txt1, txt2)
+
+
+def jaccard(txt1, txt2):
+    return td.jaccard.normalized_distance(txt1, txt2)
+
+
+def levenshtein(txt1, txt2):
+    return td.levenshtein.normalized_distance(txt1, txt2)
+
+
+text_distance_metrics = {
+    "hamming":hamming,
+    "cosine_text":cosine_text,
+    "jaccard": jaccard,
+    "levenshtein": levenshtein
+}
+
+
+def find_text_distance(txt1, txt2, method="jaccard"):
+    return text_distance_metrics[method](txt1, txt2)

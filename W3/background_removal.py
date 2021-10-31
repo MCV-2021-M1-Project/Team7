@@ -1,8 +1,7 @@
 from typing import List, Tuple
 import cv2
 import numpy as np
-import utils
-
+from utils import opening, closing
 
 def background_removal(image, limit=10):
     """
@@ -47,7 +46,7 @@ def background_removal(image, limit=10):
                         mask[i,j] = 0
                 else:
                         break
-    mask = utils.closing(utils.opening(mask, kernel_size=(25,25)), kernel_size=(25,25))
+    mask = closing(opening(mask, kernel_size=(25,25)), kernel_size=(25,25))
     return mask
 
 def enhance_mask(mask:np.ndarray, bw_min_ratio:float=0.6) -> Tuple[np.ndarray, Tuple[int,int,int,int]]:
@@ -223,4 +222,5 @@ def extract_paintings_from_image(image:np.ndarray) -> List[np.ndarray]:
         paintings.append(image[y:y+h, x:x+w,:])
 
 
-    return paintings, painting_boxes
+    return enhanced_mask, paintings, painting_boxes
+

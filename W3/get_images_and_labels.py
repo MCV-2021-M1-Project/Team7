@@ -18,6 +18,25 @@ def get_museum_dataset(file_path):
     return [cv2.imread(os.path.join(dataset_folder, img)) for img in os.listdir(dataset_folder) if img.endswith(".jpg")]
 
 
+def get_museum_text(file_path):
+    """
+    Get the text files for each image. Files contain name of the painter and the
+    painting.
+    """
+    res = []
+    dataset_folder = os.path.join(file_path, "BBDD")
+    text =  [open(os.path.join(dataset_folder, txt), "r").readline().strip('\n')\
+            for txt in os.listdir(dataset_folder) if txt.endswith(".txt")]
+
+    for txt in text:
+        if txt != '':
+            res.append(eval(txt)[0].lower())
+        else:
+            res.append("None")
+
+    return res
+
+
 def get_query_set_images(file_path, dataset_name="qsd1_w3"):
     """
     Get the images in the query sets
@@ -75,3 +94,7 @@ if __name__ == "__main__":
     #Display examples
     print(f"Query Set 1 labels : {query_set1_labels}")
     print(f"Query Set 2 labels : {query_set2_labels}")
+
+
+
+
