@@ -1,6 +1,6 @@
 ## Week 3
 
-Texture based and text based methods are included this week besides the color based histogram methods.
+Texture based and text based methods are included this week besides the color based histograms.
 
 <b> Usage: </b> <br>
 
@@ -13,9 +13,17 @@ python main.py [-all all] [-p pickle] [-m mode] [-em eval_masks] [-r dataset_pat
 Arguments: 
 
 
-all, -all:   If this argument is given code is run for all possible combinations of color spaces, distance metrics, 
-             histogram methods and k sizes [1, 5, 10] for the given mode. If mode is "eval", then a csv with the 
-             results of each combination is created.
+all, -all:   If this argument is given code, is run for all possible descriptor methods for the given mode. 
+             Descriptors are run seperately and are not combined. If you want to see the all possible descriptor
+             combinations use all_desc_combs argument. If mode is "eval", then a csv with the results of each 
+             combination is created.
+Default: False
+
+
+all_desc_combs, -adc:   If this argument is given, code is run for all possible combinations of descriptor methods.
+                        When this argument is True, we don't look at the descriptor methods argument since the code
+                        will run for all combinations regardless of the given desciptors. If mode is "eval", then a 
+                        csv with the results of each combination is created.                     
 Default: False
 
 
@@ -28,35 +36,50 @@ Default: eval
 Arguments: eval, test
 
 
-eval_masks, -em: If given evaluates the background removal results.
+eval_masks, -em: If given, evaluates the background removal results.
 Default: True
                   
 
-dataset_path, -r: If given evaluates the background removal results.
+dataset_path, -r: If given, evaluates the background removal results.
 Default: os.getcwd()
                   
  
 query_set, -q: Name of the query set we want to use. If -all is given this argument doesn't matter because the code
                will run for all query sets in the given mode.
 Default: qsd1_w1
-Arguments: qsd1_w1, qsd2_w2, qst_w1, qst_w2
                   
                   
 color_space, -cs:  Name of the color space we want to use. If -all is given this argument doesn't matter because 
                    the code will run for all color spaces in the given mode.
-Default: YCRCB
+Default: LAB
 Arguments: RGB, HSB, LAB, YCRCB 
 
 
-hist_method, -hm: Name of the query set we want to use. If -all is given this argument doesn't matter because
-                  the code will run for all histogram methods in the given mode.   
+desc_method, -dm: Which descriptors are going to be used? If multiple, should be given with commas and
+                  there shouldn't be space between commas If -all_desc_methods or -all is given this 
+                  argument doesn't matter because the code will run for all descriptor methods in the given mode.   
 Default: 3d
-Arguments: 1d, 3d
+Arguments: At least one from [1d, 3d, DCT, LBP, text]
 
 
-dm, -distance_metric: Name of the distance metric we want to use. If -all is given this argument doesn't matter
-                      because the code will run for all distance metrics in the given mode.
+color_distance_metric, -cdm: Name of the distance metric we want to use for color based histograms. 
+                             If -all_desc_methods or -all is given this argument doesn't matter because 
+                             the code will run for all distance metrics in the given mode.
 Default: hellinger
+Arguments: cosine, manhattan, euclidean, intersect, kl_div, bhattacharyya, hellinger, chisqr, correlation
+
+
+text_distance_metric, -tdm:  Name of the distance metric we want to use for text based descriptors. 
+                             If -all_desc_methods or -all is given this argument doesn't matter because 
+                             the code will run for all distance metrics in the given mode.
+Default: jaccard
+Arguments: cosine_text, jaccard, hamming, levenshtein
+
+
+texture_distance_metric, -tudm: Name of the distance metric we want to use for texture based descriptors. 
+                                If -all_desc_methods or -all is given this argument doesn't matter because 
+                                the code will run for all distance metrics in the given mode.
+Default: cosine
 Arguments: cosine, manhattan, euclidean, intersect, kl_div, bhattacharyya, hellinger, chisqr, correlation
                   
                   
