@@ -27,18 +27,6 @@ def parse_args(args=sys.argv[1:]):
         help = "Choose between evaluation and test modes: eval, test")
 
     parser.add_argument(
-        "-txt", "--text", action="store_true", default=True,
-        help = "Use text based descriptors")
-
-    parser.add_argument(
-        "-tu", "--texture", action="store_true",
-        help = "Use texture based descriptors")
-
-    parser.add_argument(
-        "-clr", "--color", action="store_true", 
-        help = "Use color based descriptors")
-
-    parser.add_argument(
         "-em", "--eval_masks", action="store_true", default=True,
         help = "Choose whether there will be a mask evaluation")
 
@@ -54,16 +42,18 @@ def parse_args(args=sys.argv[1:]):
                 Each dataset should be in a folder in this path")
         
     parser.add_argument(
-        "-q", "--query_set", default="qsd1_w2",
-        help = "Which query set to use: qsd1_w2, qsd2_w1, qsd2_w2, qst1_w2, qst2_w2")
+        "-q", "--query_set", default="qsd1_w3",
+        help = "Which query set to use")
 
     parser.add_argument(
-        "-cs", "--color_space",  default="YCRCB",
+        "-cs", "--color_space",  default="LAB",
         help = "Histogram calculation method: RGB, HSB, LAB, YCRCB")
 
     parser.add_argument(
-        "-hm", "--hist_method", default="3d",
-        help = "Histogram calculation method: 1d, 3d")
+        "-dm", "--desc_method", default="3d", 
+        help = "Which descriptors are going to be used? If multiple, \
+                should be given with commas and there shouldn't be \
+                space between commas: 1d, 3d, DCT, LBP, text")
 
     parser.add_argument(
         "-cdm", "--color_distance_metric", default="hellinger",
@@ -76,7 +66,7 @@ def parse_args(args=sys.argv[1:]):
                 cosine_text, jaccard, hamming, levenshtein")
 
     parser.add_argument(
-        "-tudm", "--texture_distance_metric", default="jaccard",
+        "-tudm", "--texture_distance_metric", default="cosine",
         help = "Similarity measure for texture base histograms to compare images: \
                 cosine, manhattan, euclidean, intersect, kl_div, hellinger, chisqr, correlation")
 
@@ -99,13 +89,7 @@ if __name__ == '__main__':
 
     cur_path = args.dataset_paths
 
-    desc_methods = []
-    if args.text:
-        desc_methods.append("text")
-    if args.texture:
-        desc_methods.append("texture")
-    if args.color:
-        desc_methods.append("color")
+    desc_methods = args.desc_method.split(",")
 
     # If -all command is given evaluates or tests all sets of that mode
     # for every possible combination of color space, distance metrics
@@ -132,7 +116,7 @@ if __name__ == '__main__':
                 query_set_imgs = eval.remove_background_and_eval(query_set_imgs, cur_path, args.query_set, False) 
 
         if args.query_set[-1] == "3":
-            
+
             query_set_imgs = [denoise_image(img) for img in query_set_imgs]
 
 
