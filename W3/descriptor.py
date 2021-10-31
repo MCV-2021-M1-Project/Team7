@@ -196,7 +196,7 @@ def get_descriptor(dataset_name:str, cur_path:str, imgs:List[np.ndarray], level:
                 else returns a list of lists with numpy arrays with calculated histograms.
     """
 
-    print("Getting the", desc_method, "descriptors for the ", dataset_name, " dataset")
+    print("Getting the", desc_method, "descriptors for the", dataset_name, "dataset")
 
     if not os.path.exists(os.path.join(cur_path, "descriptors")):
         os.mkdir("descriptors")
