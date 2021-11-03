@@ -236,9 +236,9 @@ def evaluate_query_set(query_set_imgs, museum_imgs, cur_path, level, desc_method
             print("For Desc. Method:", desc_methods, "and k:", k, "AP is: ", map)
 
         file = open(os.path.join(cur_path, "eval_results", file_name), "wb")
-        pickle.dump(desc_preds, file)
+        pickle.dump(final_preds, file)
 
-        return desc_preds, map
+        return final_preds, map
 
 
 def evaluate_combs_all(pckl, cur_path, eval_masks, mode):
