@@ -116,12 +116,13 @@ def evaluate_query_set(query_set_imgs, museum_imgs, cur_path, level, desc_method
 
     results = {}
     final_preds = []
-    qs_labels = get_images_and_labels.get_query_set_labels(cur_path, query_set)
 
+    if mode == "eval":
+        qs_labels = get_images_and_labels.get_query_set_labels(cur_path, query_set)
     
     if pckl:
-        if not os.path.exists(os.path.join(cur_path, "eval_results")):
-            os.mkdir("eval_results")
+        if not os.path.exists(os.path.join(cur_path, mode + "_results")):
+            os.mkdir(mode + "_results")
 
     if isinstance(desc_methods, str):
         desc_methods = [desc_methods]
@@ -176,12 +177,11 @@ def evaluate_query_set(query_set_imgs, museum_imgs, cur_path, level, desc_method
         results[desc_method] = {"Distances": desc_dists,
                                 "Preds": desc_preds}
 
-    #print(results)
     if len(results.keys()) != 1:
         
         for i in range(len(results[desc_methods[0]]["Distances"])):
+            img_preds = []
             for j in range(len(results[desc_methods[0]]["Distances"][i])):
-                img_preds = []
                 total_dists = np.zeros(len(results[desc_methods[0]]["Distances"][i][j]))
                 
                 for key in results.keys():
@@ -194,11 +194,12 @@ def evaluate_query_set(query_set_imgs, museum_imgs, cur_path, level, desc_method
                         total_dists = total_dists + 0.2*np.array(results[key]["Distances"][i][j])
 
                 total_preds = np.argsort(np.array(total_dists))[:k]
-                img_preds.append(total_preds)
+                total_preds = [k.item() for k in total_preds]
+                
+                img_preds.append(list(total_preds))
 
             final_preds.append(img_preds)
 
-            
         file_name = "-".join((query_set, "-".join(desc_methods))) + ".pkl"
 
     else:
@@ -213,6 +214,9 @@ def evaluate_query_set(query_set_imgs, museum_imgs, cur_path, level, desc_method
         else:
             file_name = "-".join((query_set, clr_spc, distance_metric, 
                 str(level), "-".join(desc_methods), str(hist_size))) + ".pkl"
+
+    file = open(os.path.join(cur_path, mode + "_results", file_name), "wb")
+    pickle.dump(final_preds, file)
 
     if mode == "eval":
 
@@ -234,9 +238,6 @@ def evaluate_query_set(query_set_imgs, museum_imgs, cur_path, level, desc_method
 
         else:
             print("For Desc. Method:", desc_methods, "and k:", k, "AP is: ", map)
-
-        file = open(os.path.join(cur_path, "eval_results", file_name), "wb")
-        pickle.dump(final_preds, file)
 
         return final_preds, map
 
@@ -276,10 +277,14 @@ def evaluate_combs_all(pckl, cur_path, eval_masks, mode):
 
         for comb in desc_combs:
             for k in [1,5,10]:
-                _, mAP = evaluate_query_set(query_set_imgs, museum_imgs, cur_path, 4, 
-                                            comb, mode, query_set, k=k, pckl=pckl)
+                if mode == "eval":
+                    _, mAP = evaluate_query_set(query_set_imgs, museum_imgs, cur_path, 4, 
+                                                comb, mode, query_set, k=k, pckl=pckl)
 
-                writer.writerow([query_set, comb, k, mAP])
+                    writer.writerow([query_set, comb, k, mAP])
+                else:
+                    evaluate_query_set(query_set_imgs, museum_imgs, cur_path, 4, 
+                                        comb, mode, query_set, k=k, pckl=pckl)
 
 
 # Evaluate validation query sets for each combination of
