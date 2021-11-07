@@ -40,7 +40,7 @@ Default: os.getcwd()
  
 query_set, -q: Name of the query set we want to use. If -all is given this argument doesn't matter because the code
                will run for all query sets in the given mode.
-Default: qsd1_w1
+Default: qsd1_w2
 Arguments: qsd1_w1, qsd2_w2, qst_w1, qst_w2
                   
                   
