@@ -1,6 +1,6 @@
 ## Week 4
 
-This we are trying local descriptors
+This week, we are trying local descriptors. 
 
 <b> Usage: </b> <br>
 
