@@ -6,9 +6,9 @@ This we are trying local descriptors
 
 ```
 
-python main.py [-all all] [-adc all_desc_combs] [-p pickle] [-m mode] [-em eval_masks] [-r dataset_path] [-q query_set] [-cs color_space] 
-               [dm desc_method] [-cdm color_distance_metric] [-tdm text_distance_method] [-tudm texture_distance_method] [-b bins] [-k k] 
-               [-l level]
+python main.py [-all all] [-adc all_desc_combs] [-kp keypoint_size] [-mt match_threshold] [-p pickle] [-m mode] [-em eval_masks] 
+               [-r dataset_path] [-q query_set] [-cs color_space] [dm desc_method] [-cdm color_distance_metric] [-tdm text_distance_method] 
+               [-tudm texture_distance_method] [-b bins] [-k k] [-l level]
                     
 
 Arguments: 
