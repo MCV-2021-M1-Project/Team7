@@ -10,6 +10,7 @@ import cv2
 import background_removal as bg
 from descriptor import find_imgs_with_text, denoise_image, get_descriptor, image_search
 import itertools
+from rotations import rotate_point, get_angles_and_rotations
 
 
 def apk(actual, predicted, k=10):
@@ -189,11 +190,11 @@ def evaluate_query_set(query_set_imgs, museum_imgs, cur_path, level, desc_method
                 for key in results.keys():
                     #print(results[key]["Distances"][i][j])
                     if key in ["LBP", "DCT"]:
-                        total_dists = total_dists + 0.4*np.array(results[key]["Distances"][i][j])
+                        total_dists = total_dists + 0.3*np.array(results[key]["Distances"][i][j])
                     elif key == "3d":
-                        total_dists = total_dists + 0.4*np.array(results[key]["Distances"][i][j])
+                        total_dists = total_dists + 0.3*np.array(results[key]["Distances"][i][j])
                     else:
-                        total_dists = total_dists + 0.2*np.array(results[key]["Distances"][i][j])
+                        total_dists = total_dists + 0.4*np.array(results[key]["Distances"][i][j])
 
                 total_preds = np.argsort(np.array(total_dists))[:k]
                 total_preds = [k.item() for k in total_preds]
@@ -265,7 +266,7 @@ def evaluate_combs_all(pckl, cur_path, eval_masks, mode):
 
         #query_sets = ["qsd1_w2", "qsd2_w2", "qsd1_w3", "qsd2_w3"]
 
-        query_sets = ["qsd1_w4"]
+        query_sets = ["qsd1_w5"]
 
     else:
         query_sets = ["qst1_w3", "qst2_w3"]
@@ -277,7 +278,10 @@ def evaluate_combs_all(pckl, cur_path, eval_masks, mode):
             query_set_imgs = [denoise_image(img) for img in query_set_imgs]
 
         if query_set[3] == "2" or query_set[-1] == "4":
-            query_set_imgs = remove_background_and_eval(query_set_imgs, cur_path, query_set, eval_masks)     
+            query_set_imgs = remove_background_and_eval(query_set_imgs, cur_path, query_set, eval_masks) 
+
+        if query_set[-1] == 5:
+            query_set_imgs, _ = get_angles_and_rotations(query_set_imgs, query_set, cur_path)    
 
         for comb in desc_combs:
             for k in [1,5,10]:
@@ -338,6 +342,9 @@ def evaluate_all(bins, pckl, cur_path, level, eval_masks, mode):
 
         if query_set[3] == "2" or query_set[-1] =="4":
             query_set_imgs = remove_background_and_eval(query_set_imgs, cur_path, query_set, eval_masks)     
+
+        if query_set[-1] == 5:
+            query_set_imgs, _ = get_angles_and_rotations(query_set_imgs, query_set, cur_path)    
 
         for hm in ["1d", "3d", "LBP", "DCT", "text"]:
             for k in [1,5,10]:
@@ -471,15 +478,25 @@ def remove_background_and_eval(imgs, cur_path, query_set, eval_masks):
 
     res = []
     masks = []
+    bboxes = []
     i = 0
     for img in imgs:
         # Get the mask and each painting in the image as list.
-        mask, paintings, _ = bg.extract_paintings_from_image(img)
+        mask, paintings, boxes = bg.extract_paintings_from_image(img)
 
         cv2.imwrite(os.path.join(query_set + "_bg_masks", str(i).zfill(5) + ".png"), mask.astype(np.int8)*255)
         i += 1
-        res.append(paintings[::-1])
+        
         masks.append(mask)
+        if len(paintings) == 3:
+            sorted_painting = sorted(zip(paintings, boxes), key=lambda x:x[1][0])
+        
+            res.append([painting for painting, box in sorted_painting])
+            bboxes.append([box for painting, box in sorted_painting])
+            
+        else:
+            res.append(paintings)
+            bboxes.append(boxes)
         #print(len(paintings))
 
     # Calculate Precision, Recall, F1 for background removal.
@@ -490,4 +507,70 @@ def remove_background_and_eval(imgs, cur_path, query_set, eval_masks):
         print("Precision:", np.mean([i[0] for i in mask_res]), "Recall:", np.mean([i[1] for i in mask_res]),\
               "F1:", np.mean([i[2] for i in mask_res]))
 
-    return res
+    return masks, res, bboxes
+
+
+
+def get_frames_and_eval(qsd_images, query_set, cur_path, angles, boxes, mode="eval"):
+    frame_res = []
+
+    for img, angle, img_box in zip(qsd_images, angles, boxes):
+        temp_res = []
+
+        rot_angle = angle
+
+        if rot_angle > 90:
+            rot_angle = angle - 180.0
+        else: 
+            rot_angle = angle
+
+        for painting, box in zip(img, img_box):
+            (x1, y1) = rotate_point(painting, (box[0], box[1]), rot_angle)
+            if x1 < 0:
+                x1 = 0
+            if y1 < 0:
+                y1 = 0
+
+            (x2, y2) = rotate_point(painting, (box[0]+box[2], box[1]), rot_angle)
+            if x2 < 0:
+                x2 = 0
+            if y2 < 0:
+                y2 = 0
+
+            (x3, y3) = rotate_point(painting, (box[0]+box[2], box[1]+box[3]), rot_angle)
+            if x3 < 0:
+                x3 = 0
+            if y3 < 0:
+                y3 = 0
+
+            (x4, y4) = rotate_point(painting, (box[0], box[1]+box[3]), rot_angle)
+
+            if x4 < 0:
+                x4 = 0
+            if y4 < 0:
+                y4 = 0
+
+            temp_res.append([angle, [[x1, y1], [x2, y2], [x3, y3], [x4,y4]]])
+        frame_res.append(temp_res)
+        
+    if mode == "test":
+        return frame_res
+    
+    else:
+
+        labels = get_images_and_labels.get_query_set_frames(cur_path, query_set)
+        acc = 0
+        counter = 0
+
+        for i in range(len(qsd_images)):
+            angle = angles[i]
+
+            for j in range(len(labels[i])):
+                gt = labels[i][j][0] if labels[i][j][0] < 90 else 180 - labels[i][j][0]
+                test = angle if angle < 90 else 180 - angle
+                print(f"[{i}]  {gt:.2f} / {test:.2f}")
+                acc += np.abs(gt - test)
+                counter += 1
+        acc /= counter
+        
+        return frame_res

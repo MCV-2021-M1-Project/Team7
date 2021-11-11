@@ -293,9 +293,12 @@ def image_search(desc1, desc2_arr, distance_metric="cosine", k=5):
     """
 
     dists = [find_color_distance(desc1, mus_hist, distance_metric) for mus_hist in desc2_arr]
-    preds = np.argsort(np.array(dists))[:k]
 
-    return dists, [i.item() for i in preds]
+
+    preds = np.argsort(np.array(dists))[:k]
+    preds = [i.item() for i in preds]
+    
+    return dists, preds
 
 
 # Find an image in the museum dataset
