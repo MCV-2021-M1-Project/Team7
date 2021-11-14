@@ -80,7 +80,7 @@ def parse_args(args=sys.argv[1:]):
                 cosine_text, jaccard, hamming, levenshtein")
 
     parser.add_argument(
-        "-tudm", "--texture_distance_metric", default="cosine",
+        "-tudm", "--texture_distance_metric", default="correlation",
         help = "Similarity measure for texture base histograms to compare images: \
                 cosine, manhattan, euclidean, intersect, kl_div, hellinger, chisqr, correlation")
 
@@ -126,17 +126,28 @@ if __name__ == '__main__':
 
             query_set_imgs = [denoise_image(img) for img in query_set_imgs]
 
+        if args.query_set[-1] == "5":
+            query_set_imgs, angles = get_angles_and_rotations(query_set_imgs, args.query_set, cur_path)
+
         # Don't evaluate mask if query set is a test set.
-        if args.query_set[3] == "2" or args.query_set[-1] =="4":
+        if args.query_set[3] == "2" or args.query_set[-1] > "4":
 
             if args.mode == "eval":
-                query_set_imgs = eval.remove_background_and_eval(query_set_imgs, cur_path, args.query_set, args.eval_masks)  
+                _, query_set_imgs, boxes = eval.remove_background_and_eval(query_set_imgs, cur_path, args.query_set, 
+                                                                           args.eval_masks)  
             else:
-                query_set_imgs = eval.remove_background_and_eval(query_set_imgs, cur_path, args.query_set, False) 
+                _, query_set_imgs, boxes = eval.remove_background_and_eval(query_set_imgs, cur_path, args.query_set, False) 
 
-        if args.query_set[-1] == 5:
-            qsd_images, angles = get_angles_and_rotations(query_set_imgs, args.query_set, cur_path)
+        if args.query_set[-1] == "5":
 
+            if args.mode == "eval":
+                box_acc, angle_acc, frame_res = eval.get_frames_and_eval(query_set_imgs, args.query_set, cur_path,
+                                                                         angles, boxes, args.mode)
+                print("Box accuracy:", box_acc, "Angle acc:", angle_acc)
+
+            else:
+                frame_res = eval.get_frames_and_eval(query_set_imgs, args.query_set, cur_path,
+                                                     angles, boxes, args.mode)
 
         if any(x in ["ORB", "SIFT", "DOG", "HP"] for x in desc_methods):
             for desc_method in desc_methods:
@@ -144,17 +155,17 @@ if __name__ == '__main__':
 
                 if args.mode == "eval":
                     _, mAP = get_map_for_local_descs(img_matches, desc_method, args.query_set, cur_path, 
-                                                    args.match_threshold, args.pickle, args.mode, args.k)
-
+                                                     args.match_threshold, args.pickle, args.mode, args.k)
                     print("For Keypoint Size:", args.keypoint_size, "and match threshold:", args.match_threshold, "mAP is", mAP)
 
                 else:
                     get_map_for_local_descs(img_matches, desc_method, args.query_set, cur_path, 
                                             args.match_threshold, args.pickle, args.mode, args.k)
 
+        else:
         # If -all command is not given evaluate or test the given query set.
-        eval.evaluate_query_set(query_set_imgs, museum_imgs, cur_path, args.level, desc_methods, args.mode, args.query_set,  
-                                args.color_space, args.color_distance_metric, args.text_distance_metric, args.texture_distance_metric,
-                                args.k, args.bins, args.pickle)
+            eval.evaluate_query_set(query_set_imgs, museum_imgs, cur_path, args.level, desc_methods, args.mode, args.query_set,  
+                                    args.color_space, args.color_distance_metric, args.text_distance_metric, args.texture_distance_metric,
+                                    args.k, args.bins, args.pickle)
 
 

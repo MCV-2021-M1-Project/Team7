@@ -147,7 +147,7 @@ def get_map_for_local_descs(img_matches, ld_method, query_set, cur_path, match_t
         if not os.path.exists(query_path):
             os.mkdir(query_path)
          
-        with open(os.path.join(query_path, ld_method + "_result.pkl"), "wb") as file:
+        with open(os.path.join(query_path, query_set + "_" + ld_method + "_result.pkl"), "wb") as file:
             pickle.dump(final_match, file)
             
     if mode=="eval":

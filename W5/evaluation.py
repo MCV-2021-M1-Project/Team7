@@ -1,5 +1,5 @@
 import numpy as np
-from utils import color_spaces
+from utils import color_spaces, get_iou
 import pickle
 import os
 import time
@@ -81,7 +81,8 @@ def mapk(actual, predicted, k=10):
 
 # Evaluate the whole query set with the given conditions
 def evaluate_query_set(query_set_imgs, museum_imgs, cur_path, level, desc_methods, mode, query_set="qsd1_w3", clr_spc="LAB", 
-                       distance_metric="hellinger", text_distance="jaccard", texture_distance="cosine", k=5, hist_size=8, pckl=True):
+                       distance_metric="hellinger", text_distance="jaccard", texture_distance="correlation",
+                       k=5, hist_size=8, pckl=True):
 
     """
     Parameters
@@ -190,11 +191,11 @@ def evaluate_query_set(query_set_imgs, museum_imgs, cur_path, level, desc_method
                 for key in results.keys():
                     #print(results[key]["Distances"][i][j])
                     if key in ["LBP", "DCT"]:
-                        total_dists = total_dists + 0.3*np.array(results[key]["Distances"][i][j])
+                        total_dists = total_dists + 0.4*np.array(results[key]["Distances"][i][j])
                     elif key == "3d":
                         total_dists = total_dists + 0.3*np.array(results[key]["Distances"][i][j])
                     else:
-                        total_dists = total_dists + 0.4*np.array(results[key]["Distances"][i][j])
+                        total_dists = total_dists + 0.3*np.array(results[key]["Distances"][i][j])
 
                 total_preds = np.argsort(np.array(total_dists))[:k]
                 total_preds = [k.item() for k in total_preds]
@@ -258,7 +259,7 @@ def evaluate_combs_all(pckl, cur_path, eval_masks, mode):
 
     if mode == "eval":
 
-        file = open(str(current_time) + "_w3_eval_comb_results.csv", "w", encoding='UTF8', newline='')
+        file = open(str(current_time) + "_w5_eval_comb_results.csv", "w", encoding='UTF8', newline='')
 
         header = ['Query_Set', 'Desc_Method', 'K', "mAP"]
         writer = csv.writer(file, delimiter=";")
@@ -269,7 +270,7 @@ def evaluate_combs_all(pckl, cur_path, eval_masks, mode):
         query_sets = ["qsd1_w5"]
 
     else:
-        query_sets = ["qst1_w3", "qst2_w3"]
+        query_sets = ["qst1_w5"]
 
     for query_set in query_sets:
         query_set_imgs = get_images_and_labels.get_query_set_images(cur_path, query_set)
@@ -277,18 +278,27 @@ def evaluate_combs_all(pckl, cur_path, eval_masks, mode):
         if int(query_set[-1]) >= 3:
             query_set_imgs = [denoise_image(img) for img in query_set_imgs]
 
-        if query_set[3] == "2" or query_set[-1] == "4":
-            query_set_imgs = remove_background_and_eval(query_set_imgs, cur_path, query_set, eval_masks) 
+        if query_set[-1] == "5":
+            query_set_imgs, angles = get_angles_and_rotations(query_set_imgs, query_set, cur_path) 
 
-        if query_set[-1] == 5:
-            query_set_imgs, _ = get_angles_and_rotations(query_set_imgs, query_set, cur_path)    
+        if query_set[3] == "2" or query_set[-1] > "4":
+            _, query_set_imgs, boxes = remove_background_and_eval(query_set_imgs, cur_path, query_set, eval_masks) 
+
+        if query_set[-1] == "5":
+            if mode == "eval":
+                box_acc, angle_acc, frame_res = get_frames_and_eval(query_set_imgs, query_set, cur_path,
+                                                                    angles, boxes, mode)
+                print("Box accuracy:", box_acc, "Angle acc:", angle_acc) 
+                
+            else:
+                frame_res = get_frames_and_eval(query_set_imgs, query_set, cur_path,
+                                                angles, boxes, mode)
 
         for comb in desc_combs:
             for k in [1,5,10]:
                 if mode == "eval":
                     _, mAP = evaluate_query_set(query_set_imgs, museum_imgs, cur_path, 4, 
                                                 comb, mode, query_set, k=k, pckl=pckl)
-
                     writer.writerow([query_set, comb, k, mAP])
                 else:
                     evaluate_query_set(query_set_imgs, museum_imgs, cur_path, 4, 
@@ -321,17 +331,17 @@ def evaluate_all(bins, pckl, cur_path, level, eval_masks, mode):
 
     if mode == "eval":
 
-        file = open(str(current_time) + "_w3_eval_results.csv", "w", encoding='UTF8', newline='')
+        file = open(str(current_time) + "_w5_eval_results.csv", "w", encoding='UTF8', newline='')
 
         header = ['Query_Set', 'Color_Space', 'Distance_Metric', 'Desc_Method', 'K', "mAP"]
         writer = csv.writer(file, delimiter=";")
         writer.writerow(header)
 
         #query_sets = ["qsd1_w2", "qsd2_w2", "qsd1_w3", "qsd2_w3"]
-        query_sets = ["qsd1_w4"] 
+        query_sets = ["qsd1_w5"] 
 
     else:
-        query_sets = ["qst1_w4"]
+        query_sets = ["qst1_w5"]
 
     for query_set in query_sets:
         start_time = time.time()
@@ -340,11 +350,20 @@ def evaluate_all(bins, pckl, cur_path, level, eval_masks, mode):
         if int(query_set[-1]) >= 3:
             query_set_imgs = [denoise_image(img) for img in query_set_imgs]
 
-        if query_set[3] == "2" or query_set[-1] =="4":
-            query_set_imgs = remove_background_and_eval(query_set_imgs, cur_path, query_set, eval_masks)     
+        if query_set[-1] == "5":
+            query_set_imgs, angles = get_angles_and_rotations(query_set_imgs, query_set, cur_path) 
 
-        if query_set[-1] == 5:
-            query_set_imgs, _ = get_angles_and_rotations(query_set_imgs, query_set, cur_path)    
+        if query_set[3] == "2" or query_set[-1] > "4":
+            _, query_set_imgs, boxes = remove_background_and_eval(query_set_imgs, cur_path, query_set, eval_masks)     
+
+        if query_set[-1] == "5":
+            if mode == "eval":
+                box_acc, angle_acc, frame_res = get_frames_and_eval(query_set_imgs, query_set, cur_path,
+                                                                    angles, boxes, mode)
+                print("Box accuracy:", box_acc, "Angle acc:", angle_acc)   
+            else:
+                frame_res = get_frames_and_eval(query_set_imgs, query_set, cur_path,
+                                                angles, boxes, mode)
 
         for hm in ["1d", "3d", "LBP", "DCT", "text"]:
             for k in [1,5,10]:
@@ -515,6 +534,7 @@ def get_frames_and_eval(qsd_images, query_set, cur_path, angles, boxes, mode="ev
     frame_res = []
 
     for img, angle, img_box in zip(qsd_images, angles, boxes):
+        
         temp_res = []
 
         rot_angle = angle
@@ -553,24 +573,39 @@ def get_frames_and_eval(qsd_images, query_set, cur_path, angles, boxes, mode="ev
             temp_res.append([angle, [[x1, y1], [x2, y2], [x3, y3], [x4,y4]]])
         frame_res.append(temp_res)
         
+    with open(query_set + "_frame_res.pkl", "wb") as f:
+        pickle.dump(frame_res, f)
+
     if mode == "test":
         return frame_res
     
     else:
-
         labels = get_images_and_labels.get_query_set_frames(cur_path, query_set)
-        acc = 0
+        box_acc = 0
+        angle_acc = 0
         counter = 0
-
-        for i in range(len(qsd_images)):
-            angle = angles[i]
-
-            for j in range(len(labels[i])):
-                gt = labels[i][j][0] if labels[i][j][0] < 90 else 180 - labels[i][j][0]
-                test = angle if angle < 90 else 180 - angle
-                print(f"[{i}]  {gt:.2f} / {test:.2f}")
-                acc += np.abs(gt - test)
-                counter += 1
-        acc /= counter
         
-        return frame_res
+        for i, img in enumerate(frame_res):
+            for j, painting in enumerate(img):
+                sorted_bbs = np.sort(np.array(painting[1]), axis=0)
+                tlx1, tly1 = sorted_bbs[0]
+                brx1, bry1 = sorted_bbs[-1]
+                
+                p_box = (tlx1, tly1, brx1, bry1)
+                p_angle = painting[0]+90 if painting[0] < 90 else 180-painting[0]
+
+                sorted_lbls = np.sort(np.array(labels[i][j][1]), axis=0)
+                tlx2, tly2 = sorted_lbls[0]
+                brx2, bry2 = sorted_lbls[-1]
+                
+                r_box = (tlx2, tly2, brx2, bry2)
+                r_angle = labels[i][j][0] if labels[i][j][0] < 90 else 180-labels[i][j][0]
+                
+                box_acc = box_acc + (get_iou(r_box, p_box))
+                angle_acc = angle_acc + np.abs(p_angle-r_angle)
+                counter += 1
+
+        box_acc = box_acc/counter
+        angle_acc = angle_acc/counter
+        
+        return box_acc, angle_acc, frame_res
